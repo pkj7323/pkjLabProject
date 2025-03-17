@@ -9,12 +9,12 @@ public:
 	void OnDestroy();//프레임 워크 종료하는 함수
 
 	void CreateSwapChain();
-	void CreateRtvAndDsvDescriptorHeaps();
 	void CreateDirect3DDevice();
 	void CreateCommandQueueAndList();
+	void CreateRtvAndDsvDescriptorHeaps();
 	//디바이스, 서술자 힙, 명령큐, 할당자, 리스트를 생성하는 함수
 
-	void CreateRenderTargetView();
+	void CreateRenderTargetViews();
 	void CreateDepthStencilView();
 	//렌더 타겟 뷰와 깊이 -스탠실 뷰를 생성하는 함수
 
@@ -39,10 +39,10 @@ private:
 
 	int m_nWndClientWidth;
 	int m_nWndClientHeight;
-
-	IDXGIFactory4* m_pDXGIFactory; //DXGI 팩토리에 대한 포인터
-	IDXGISwapChain3* m_pDXGISwapChain; //스왑체인에 대한 포인터(스왑체인 = 프레임 버퍼 교체해주는 거)
-	ID3D12Device* m_pD3D12Device; //디바이스에 대한 포인터 리소스 생성에 필요
+	
+	IDXGIFactory4* m_pdxgiFactory; //DXGI 팩토리에 대한 포인터
+	IDXGISwapChain3* m_pdxgiSwapChain; //스왑체인에 대한 포인터(스왑체인 = 프레임 버퍼 교체해주는 거)
+	ID3D12Device* m_pd3dDevice; //디바이스에 대한 포인터 리소스 생성에 필요
 
 	bool m_bMsaa4xEnable = false; //다중 샘플링 플래그
 	UINT m_nMsaa4xQualityLevels = 0;//다중 샘플링 품질 레벨
