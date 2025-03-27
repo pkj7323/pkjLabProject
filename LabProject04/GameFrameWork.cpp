@@ -15,13 +15,15 @@ CGameFrameWork::CGameFrameWork()
 	m_pd3dPipelineState = NULL;
 	m_pd3dCommandList = NULL;
 
-	for (auto& m_ppd3dRenderTargetBuffer : m_ppd3dRenderTargetBuffers)
-	{
-		m_ppd3dRenderTargetBuffer = NULL;
-	}
+	for (int i = 0; i < m_nSwapChainBufferCount; i++) 
+		m_ppd3dRenderTargetBuffers[i] = NULL;
 	m_pd3dRtvDescriptorHeap = NULL;
+	m_nRtvDescriptorIncrementSize = 0;
+
+	m_pd3dDepthStencilBuffer = NULL;
 	m_pd3dDsvDescriptorHeap = NULL;
 	m_nDsvDescriptorIncrementSize = 0;
+
 
 	m_nSwapChainBufferIndex = 0;
 
@@ -62,19 +64,16 @@ void CGameFrameWork::OnDestroy()
 	ReleaseObjects(); //렌더링 객체들을 소멸한다.
 
 	::CloseHandle(m_hFenceEvent);
+	for (auto& m_ppd3dRenderTargetBuffer : m_ppd3dRenderTargetBuffers)
+		if (m_ppd3dRenderTargetBuffer)
+			m_ppd3dRenderTargetBuffer->Release();
 
-	for (auto& render_target_buffer : m_ppd3dRenderTargetBuffers)
-	{
-		if (render_target_buffer)
-		{
-			render_target_buffer->Release();
-		}
-	}
 
 	if (m_pd3dRtvDescriptorHeap)
 	{
 		m_pd3dRtvDescriptorHeap->Release();
 	}
+
 	if (m_pd3dDepthStencilBuffer)
 	{
 		m_pd3dDepthStencilBuffer->Release();
@@ -83,6 +82,7 @@ void CGameFrameWork::OnDestroy()
 	{
 		m_pd3dDsvDescriptorHeap->Release();
 	}
+
 	if (m_pd3dCommandAllocator)
 	{
 		m_pd3dCommandAllocator->Release();
@@ -91,10 +91,15 @@ void CGameFrameWork::OnDestroy()
 	{
 		m_pd3dCommandQueue->Release();
 	}
+	if (m_pd3dPipelineState)
+	{
+		m_pd3dPipelineState->Release();
+	}
 	if (m_pd3dCommandList)
 	{
 		m_pd3dCommandList->Release();
 	}
+
 	if (m_pd3dFence)
 	{
 		m_pd3dFence->Release();
@@ -114,7 +119,7 @@ void CGameFrameWork::OnDestroy()
 	{
 		m_pdxgiFactory->Release();
 	}
-#ifdef _DEBUG
+#if defined(_DEBUG)
 	IDXGIDebug1* pdxgiDebug = NULL;
 	DXGIGetDebugInterface1(0, __uuidof(IDXGIDebug1), (void**)&pdxgiDebug);
 	HRESULT hResult = pdxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_DETAIL);
@@ -237,20 +242,14 @@ void CGameFrameWork::CreateDirect3DDevice()
 	//DXGI 팩토리 생성
 
 	IDXGIAdapter1* pd3dAdapter = nullptr;
-	for (UINT i = 0; DXGI_ERROR_NOT_FOUND != m_pdxgiFactory->EnumAdapters1(i, &pd3dAdapter); ++i)
+	for (UINT i = 0; DXGI_ERROR_NOT_FOUND != m_pdxgiFactory->EnumAdapters1(i, &pd3dAdapter); i++)
 	{
 		DXGI_ADAPTER_DESC1 dxgiAdapterDesc;
 		pd3dAdapter->GetDesc1(&dxgiAdapterDesc);
-		if (dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE)
-		{
+		if (dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) 
 			continue;
-		}
-
-		if (SUCCEEDED(D3D12CreateDevice(pd3dAdapter, D3D_FEATURE_LEVEL_12_0,
-										__uuidof(ID3D12Device), reinterpret_cast<void**>(&m_pd3dDevice))))
-		{//모든 하드웨어 어뎁터에 대하여 특성 레벨을 12.0을 지원하는 하드웨어 디바이스를 생성한다.
+		if (SUCCEEDED(D3D12CreateDevice(pd3dAdapter, D3D_FEATURE_LEVEL_12_0, _uuidof(ID3D12Device), (void**)&m_pd3dDevice))) 
 			break;
-		}
 	}
 
 	if (!pd3dAdapter)
@@ -271,7 +270,7 @@ void CGameFrameWork::CreateDirect3DDevice()
 									  &d3dMsaaQualityLevels, sizeof(D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS));
 	m_nMsaa4xQualityLevels = d3dMsaaQualityLevels.NumQualityLevels;
 	//디바이스 지원하는 다중 샘플링의 레벨을 확인한다.
-	m_bMsaa4xEnable = (m_nMsaa4xQualityLevels > 1);
+	m_bMsaa4xEnable = (m_nMsaa4xQualityLevels > 1) ? true : false;
 	//다중샘플링이 1보다 크면 true
 
 	hResult = m_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
@@ -369,11 +368,10 @@ void CGameFrameWork::CreateRenderTargetViews()
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle =
 		m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	for (UINT i = 0; i < m_nSwapChainBufferCount; ++i)
+	for (UINT i = 0; i < m_nSwapChainBufferCount; i++)
 	{
-		m_pdxgiSwapChain->GetBuffer(i, __uuidof(ID3D12Resource),
-									reinterpret_cast<void**>(&m_ppd3dRenderTargetBuffers[i]));
-		m_pd3dDevice->CreateRenderTargetView(m_ppd3dRenderTargetBuffers[i], nullptr, d3dRtvCPUDescriptorHandle);
+		m_pdxgiSwapChain->GetBuffer(i, __uuidof(ID3D12Resource), (void**)&m_ppd3dRenderTargetBuffers[i]);
+		m_pd3dDevice->CreateRenderTargetView(m_ppd3dRenderTargetBuffers[i], NULL, d3dRtvCPUDescriptorHandle);
 		d3dRtvCPUDescriptorHandle.ptr += m_nRtvDescriptorIncrementSize;
 	}
 }
@@ -433,7 +431,6 @@ void CGameFrameWork::FrameAdvance()
 	m_GameTimer.Tick(0.0f);
 
 	ProcessInput();
-
 	AnimateObjects();
 
 	HRESULT hResult = m_pd3dCommandAllocator->Reset();
@@ -509,13 +506,14 @@ void CGameFrameWork::FrameAdvance()
 	dxgiPresentParameters.pDirtyRects = NULL;
 	dxgiPresentParameters.pScrollRect = NULL;
 	dxgiPresentParameters.pScrollOffset = NULL;
-	m_pdxgiSwapChain->Present1(1, 0, &dxgiPresentParameters);
+	//m_pdxgiSwapChain->Present1(1, 0, &dxgiPresentParameters);
 	/*스왑체인을 프리젠트한다. 프리젠트를 하면 현재 렌더 타겟(후면버퍼)의 내용이 전면버퍼로 옮겨지고 렌더 타겟 인
    덱스가 바뀔 것이다.*/
 
-	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
 
 	m_pdxgiSwapChain->Present(0, 0);
+
+	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
 
 	/*현재의 프레임 레이트를 문자열로 가져와서 주 윈도우의 타이틀로 출력한다. m_pszBuffer 문자열이
 		"LapProject ("으로 초기화되었으므로 (m_pszFrameRate+12)에서부터
