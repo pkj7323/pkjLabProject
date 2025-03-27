@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include "LabProject02.h"
+#include "LabProject04.h"
 
 #define MAX_LOADSTRING 100
 
@@ -18,9 +18,9 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+                      _In_opt_ HINSTANCE hPrevInstance,
+                      _In_ LPWSTR    lpCmdLine,
+                      _In_ int       nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -29,28 +29,28 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     // 전역 문자열을 초기화합니다.
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
-    LoadStringW(hInstance, IDC_LABPROJECT02, szWindowClass, MAX_LOADSTRING);
+    LoadStringW(hInstance, IDC_LABPROJECT04, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
     // 애플리케이션 초기화를 수행합니다:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
 
-    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LABPROJECT02));
+    HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LABPROJECT04));
 
     MSG msg;
 
     // 변형 메세지 루프
     while (true)
     {
-        if (::PeekMessage(&msg,NULL,0,0,PM_REMOVE))
+        if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
-	        if (msg.message == WM_QUIT)
-	        {
-				break;
-	        }
+            if (msg.message == WM_QUIT)
+            {
+                break;
+            }
             if (!::TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
             {
                 ::TranslateMessage(&msg);
@@ -59,12 +59,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
         else
         {
-			g_GameFrameWork.FrameAdvance();
+            g_GameFrameWork.FrameAdvance();
         }
     }
-	g_GameFrameWork.OnDestroy();
+    g_GameFrameWork.OnDestroy();
 
-    return (int) msg.wParam;
+    return (int)msg.wParam;
 }
 
 
@@ -80,17 +80,17 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LABPROJECT02));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = NULL;
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
+    wcex.style = CS_HREDRAW | CS_VREDRAW;
+    wcex.lpfnWndProc = WndProc;
+    wcex.cbClsExtra = 0;
+    wcex.cbWndExtra = 0;
+    wcex.hInstance = hInstance;
+    wcex.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_LABPROJECT04));
+    wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+    wcex.lpszMenuName = NULL;
+    wcex.lpszClassName = szWindowClass;
+    wcex.hIconSm = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
     return RegisterClassExW(&wcex);
 }
@@ -107,25 +107,28 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
+    
 
-   DWORD dwstyle = WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_BORDER;
-   ghAppInstance = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
-   RECT rc = { 0, 0, 640, 480 };
-   AdjustWindowRect(&rc, dwstyle, FALSE);
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, dwstyle, CW_USEDEFAULT, CW_USEDEFAULT,
-       rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
+    ghAppInstance = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
+    RECT rc = { 0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT };
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+    DWORD dwstyle = WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_BORDER;
+    AdjustWindowRect(&rc, dwstyle, FALSE);
+    HWND hMainWnd = CreateWindowW(szWindowClass, szTitle, dwstyle, CW_USEDEFAULT, CW_USEDEFAULT,
+                              rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
 
-   g_GameFrameWork.OnCreate(hInstance, hWnd);
+    if (!hMainWnd)
+    	return FALSE;
+    
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+    g_GameFrameWork.OnCreate(hInstance, hMainWnd);
 
-   return TRUE;
+    ShowWindow(hMainWnd, nCmdShow);
+    UpdateWindow(hMainWnd);
+#ifdef _WITH_SWAPCHAIN_FULLSCREEN_STATE
+	g_GameFrameWork.ChangeSwapChainState();
+#endif
+    return TRUE;
 }
 
 //
@@ -142,21 +145,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-    case WM_SIZE:
-	case WM_LBUTTONDOWN:
-	case WM_RBUTTONDOWN:
-	case WM_LBUTTONUP:
-	case WM_RBUTTONUP:
-	case WM_MOUSEMOVE:
-	case WM_KEYDOWN:
-	case WM_KEYUP:
-		g_GameFrameWork.OnProcessingWindowMessage(hWnd, message, wParam, lParam);
-        break;
-    case WM_DESTROY:
-        PostQuitMessage(0);
-        break;
-    default:
-        return DefWindowProc(hWnd, message, wParam, lParam);
+        case WM_SIZE:
+        case WM_LBUTTONDOWN:
+        case WM_RBUTTONDOWN:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONUP:
+        case WM_MOUSEMOVE:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+            g_GameFrameWork.OnProcessingWindowMessage(hWnd, message, wParam, lParam);
+            break;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+        default:
+            return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
 }
@@ -167,16 +170,16 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
     UNREFERENCED_PARAMETER(lParam);
     switch (message)
     {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
+        case WM_INITDIALOG:
             return (INT_PTR)TRUE;
-        }
-        break;
+
+        case WM_COMMAND:
+            if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
+            {
+                EndDialog(hDlg, LOWORD(wParam));
+                return (INT_PTR)TRUE;
+            }
+            break;
     }
     return (INT_PTR)FALSE;
 }

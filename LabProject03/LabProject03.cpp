@@ -7,7 +7,7 @@
 #define MAX_LOADSTRING 100
 
 // 전역 변수:
-HINSTANCE hInst;                                // 현재 인스턴스입니다.
+HINSTANCE ghAppInstance;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
 WCHAR szWindowClass[MAX_LOADSTRING];            // 기본 창 클래스 이름입니다.
 
@@ -100,7 +100,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
     DWORD dwstyle = WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_BORDER;
-    hInst = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
+    ghAppInstance = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
     RECT rc = { 0, 0, 640, 480 };
     AdjustWindowRect(&rc, dwstyle, FALSE);
     HWND hWnd = CreateWindowW(szWindowClass, szTitle, dwstyle, CW_USEDEFAULT, CW_USEDEFAULT,

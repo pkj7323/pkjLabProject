@@ -1,5 +1,5 @@
 #pragma once
-
+#include "Timer.h"
 class CGameFrameWork
 {
 public:
@@ -9,6 +9,7 @@ public:
 	bool OnCreate(HINSTANCE hInstance, HWND hMainWnd);//프레임 워크 초기화하는 함수
 	void OnDestroy();//프레임 워크 종료하는 함수
 
+	void ChangeSwapChainState();
 	void CreateSwapChain();
 	void CreateDirect3DDevice();
 	void CreateCommandQueueAndList();
@@ -35,13 +36,12 @@ public:
 	LRESULT CALLBACK OnProcessingWindowMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 
 private:
-	ID3D12Resource* m_ppd3dSwapChainBackBuffers; // 스왑 체인 백 버퍼에 대한 포인터 배열 추가
 	HINSTANCE m_hInstance;
 	HWND m_hWnd;
 
 	int m_nWndClientWidth;
 	int m_nWndClientHeight;
-	
+
 	IDXGIFactory4* m_pdxgiFactory; //DXGI 팩토리에 대한 포인터
 	IDXGISwapChain3* m_pdxgiSwapChain; //스왑체인에 대한 포인터(스왑체인 = 프레임 버퍼 교체해주는 거)
 	ID3D12Device* m_pd3dDevice; //디바이스에 대한 포인터 리소스 생성에 필요
@@ -51,6 +51,7 @@ private:
 
 	static constexpr UINT m_nSwapChainBufferCount = 2; //스왑체인 백버퍼 개수
 	UINT m_nSwapChainBufferIndex = 0; //현재 백버퍼 인덱스
+	//ID3D12Resource* m_ppd3dSwapChainBackBuffers[m_nSwapChainBufferCount]; //스왑체인 백버퍼에 대한 포인터
 
 	ID3D12Resource* m_ppd3dRenderTargetBuffers[m_nSwapChainBufferCount]; //렌더 타겟 버퍼에 대한 포인터
 	ID3D12DescriptorHeap* m_pd3dRtvDescriptorHeap; //렌더 타겟 뷰 디스크립터 힙에 대한 포인터
@@ -72,6 +73,9 @@ private:
 
 	D3D12_VIEWPORT m_d3dViewport; //뷰포트 구조체
 	D3D12_RECT m_d3dScissorRect; //시저(가위) 구조체
+
+	CGameTimer m_GameTimer;		//게임 프레임워크에서 사용 할 타이머이다.
+	_TCHAR m_pszFrameRate[50];	//프레임 레이트를 표시하기 위한 문자열 버퍼이다.
 
 };
 
