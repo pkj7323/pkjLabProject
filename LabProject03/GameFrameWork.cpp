@@ -123,7 +123,7 @@ void CGameFrameWork::CreateSwapChain() {
 	dxgiSwapChainDesc.SampleDesc.Count = m_bMsaa4xEnable ? 4 : 1;
 	dxgiSwapChainDesc.SampleDesc.Quality = m_bMsaa4xEnable ? (m_nMsaa4xQualityLevels - 1) : 0;
 	dxgiSwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	dxgiSwapChainDesc.BufferCount = m_nSwapChainBufferCount;
+	dxgiSwapChainDesc.BufferCount = m_nSwapChainBuffers;
 	dxgiSwapChainDesc.Scaling = DXGI_SCALING_NONE;
 	dxgiSwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	dxgiSwapChainDesc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
@@ -261,7 +261,7 @@ void CGameFrameWork::CreateCommandQueueAndList() {
 void CGameFrameWork::CreateRtvAndDsvDescriptorHeaps() {
 	D3D12_DESCRIPTOR_HEAP_DESC d3dDescriptorHeapDesc;
 	::ZeroMemory(&d3dDescriptorHeapDesc, sizeof(D3D12_DESCRIPTOR_HEAP_DESC));
-	d3dDescriptorHeapDesc.NumDescriptors = m_nSwapChainBufferCount;
+	d3dDescriptorHeapDesc.NumDescriptors = m_nSwapChainBuffers;
 	d3dDescriptorHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	d3dDescriptorHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	d3dDescriptorHeapDesc.NodeMask = 0;
@@ -286,7 +286,7 @@ void CGameFrameWork::CreateRtvAndDsvDescriptorHeaps() {
 void CGameFrameWork::CreateRenderTargetViews() {
 	D3D12_CPU_DESCRIPTOR_HANDLE d3dRtvCPUDescriptorHandle =
 		m_pd3dRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	for (UINT i = 0; i < m_nSwapChainBufferCount; ++i) {
+	for (UINT i = 0; i < m_nSwapChainBuffers; ++i) {
 		m_pdxgiSwapChain->GetBuffer(i, __uuidof(ID3D12Resource),
 			reinterpret_cast<void**>(&m_ppd3dRenderTargetBuffers[i]));
 		m_pd3dDevice->CreateRenderTargetView(m_ppd3dRenderTargetBuffers[i], nullptr, d3dRtvCPUDescriptorHandle);

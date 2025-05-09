@@ -47,10 +47,10 @@ private:
 	bool m_bMsaa4xEnable = false; //다중 샘플링 플래그
 	UINT m_nMsaa4xQualityLevels = 0;//다중 샘플링 품질 레벨
 
-	static constexpr UINT m_nSwapChainBufferCount = 2; //스왑체인 백버퍼 개수
+	static constexpr UINT m_nSwapChainBuffers = 2; //스왑체인 백버퍼 개수
 	UINT m_nSwapChainBufferIndex = 0; //현재 백버퍼 인덱스
 
-	ID3D12Resource* m_ppd3dRenderTargetBuffers[m_nSwapChainBufferCount]; //렌더 타겟 버퍼에 대한 포인터
+	ID3D12Resource* m_ppd3dRenderTargetBuffers[m_nSwapChainBuffers]; //렌더 타겟 버퍼에 대한 포인터
 	ID3D12DescriptorHeap* m_pd3dRtvDescriptorHeap; //렌더 타겟 뷰 디스크립터 힙에 대한 포인터
 	UINT m_nRtvDescriptorIncrementSize; //렌더 타겟 서술자의 원소의 크기
 

@@ -40,4 +40,28 @@ using Microsoft::WRL::ComPtr;
 #define FRAME_BUFFER_WIDTH 800
 #define FRAME_BUFFER_HEIGHT 600
 
+#define HR_TO_STRING(x) #x
+#ifdef _DEBUG
+inline HRESULT DXCall(HRESULT hr)
+{
+	if (FAILED(hr))
+	{
+		char line_num[32];
+		sprintf_s(line_num, "%u", __LINE__);
+		OutputDebugStringA("Error in :");
+		OutputDebugStringA(__FILE__);
+		OutputDebugStringA("\nLine: ");
+		OutputDebugStringA(line_num);
+		OutputDebugStringA("\n");
+		OutputDebugStringA(HR_TO_STRING(hr));
+		OutputDebugStringA("\n");
+		__debugbreak();
+	}
+	return hr;
+}
+#else
+#ifndef DXCall
+#define DXCall(x) x
+#endif
+#endif // DEBUG
 //#define _WITH_SWAPCHAIN_FULLSCREEN_STATE

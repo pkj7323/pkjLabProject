@@ -1,10 +1,13 @@
 #pragma once
 #include "Timer.h"
+#include "Scene.h"
 class CGameFrameWork
 {
 public:
 	CGameFrameWork();
 	~CGameFrameWork();
+
+	void MoveToNextFrame(); //프레임을 진행하는 함수
 	//응용 프로그램이 실행되어 주윈도우가 생성되면 호출됨
 	bool OnCreate(HINSTANCE hInstance, HWND hMainWnd);//프레임 워크 초기화하는 함수
 	void OnDestroy();//프레임 워크 종료하는 함수
@@ -49,11 +52,15 @@ private:
 	bool m_bMsaa4xEnable = false; //다중 샘플링 플래그
 	UINT m_nMsaa4xQualityLevels = 0;//다중 샘플링 품질 레벨
 
-	static constexpr UINT m_nSwapChainBufferCount = 2; //스왑체인 백버퍼 개수
+	static constexpr UINT m_nSwapChainBuffers = 2; //스왑체인 백버퍼 개수
+
+	UINT64 m_nFenceValues[m_nSwapChainBuffers];// 후면버퍼마다 현재의 펜스 값을 관리하기 위하여
+	CScene *m_pScene;
+
 	UINT m_nSwapChainBufferIndex = 0; //현재 백버퍼 인덱스
 	//ID3D12Resource* m_ppd3dSwapChainBackBuffers[m_nSwapChainBufferCount]; //스왑체인 백버퍼에 대한 포인터
 
-	ID3D12Resource* m_ppd3dRenderTargetBuffers[m_nSwapChainBufferCount]; //렌더 타겟 버퍼에 대한 포인터
+	ID3D12Resource* m_ppd3dRenderTargetBuffers[m_nSwapChainBuffers]; //렌더 타겟 버퍼에 대한 포인터
 	ID3D12DescriptorHeap* m_pd3dRtvDescriptorHeap; //렌더 타겟 뷰 디스크립터 힙에 대한 포인터
 	UINT m_nRtvDescriptorIncrementSize; //렌더 타겟 서술자의 원소의 크기
 
