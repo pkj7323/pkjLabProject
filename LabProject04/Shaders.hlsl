@@ -23,5 +23,6 @@ float4 PSMain(float4 input : SV_POSITION) : SV_TARGET
 {
     float4 cColor = float4(0.0f, 0.0f, 0.0f, 1.0f);
     cColor.r = input.x / FRAME_BUFFER_WIDTH;
+    cColor.g = input.y / FRAME_BUFFER_HEIGHT;
     return (cColor);
 }
