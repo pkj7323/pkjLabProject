@@ -152,7 +152,12 @@ void CScene::PrepareRender(ID3D12GraphicsCommandList* pd3dCommandList)
 
 void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 {
-	PrepareRender(pd3dCommandList);
-	//정점 3개를 사용하여 렌더링한다.
-	pd3dCommandList->DrawInstanced(3, 1, 0, 0);
+	//그래픽 루트 시그너쳐를 설정한다.
+	pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+	//파이프라인 상태를 설정한다.
+	pd3dCommandList->SetPipelineState(m_pd3dPipelineState);
+	//프리미티브 토폴로지(삼각형 리스트)를 설정한다.
+	pd3dCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//정점 6개를 사용하여 렌더링한다.
+	pd3dCommandList->DrawInstanced(6, 1, 0, 0);
 }
