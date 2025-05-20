@@ -103,7 +103,7 @@ void CScene::CreateGraphicsPipelineState(ID3D12Device* pd3dDevice)
 	d3dPipelineStateDesc.SampleDesc.Count = 1;
 	d3dPipelineStateDesc.SampleDesc.Quality = 0;
 
-	pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, IID_PPV_ARGS(&m_pd3dPipelineState));
+	DXCall(pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, IID_PPV_ARGS(&m_pd3dPipelineState)));
 
 	if (pd3dVertexShaderBlob) pd3dVertexShaderBlob->Release();
 	if (pd3dPixelShaderBlob) pd3dPixelShaderBlob->Release();

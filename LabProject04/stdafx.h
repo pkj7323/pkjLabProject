@@ -37,10 +37,12 @@ using Microsoft::WRL::ComPtr;
 
 #pragma comment(lib, "winmm.lib")
 
-#define FRAME_BUFFER_WIDTH 800
-#define FRAME_BUFFER_HEIGHT 600
+
+#define FRAME_BUFFER_WIDTH 640
+#define FRAME_BUFFER_HEIGHT 480
 
 #define HR_TO_STRING(x) #x
+
 #ifdef _DEBUG
 inline HRESULT DXCall(HRESULT hr)
 {

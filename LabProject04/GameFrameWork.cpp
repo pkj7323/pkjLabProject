@@ -44,18 +44,7 @@ CGameFrameWork::CGameFrameWork()
 CGameFrameWork::~CGameFrameWork()
 {}
 
-void CGameFrameWork::MoveToNextFrame()
-{
-	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
 
-	UINT64 nFenceValue = ++m_nFenceValues[m_nSwapChainBufferIndex];
-	HRESULT hResult = m_pd3dCommandQueue->Signal(m_pd3dFence, nFenceValue);
-	if (m_pd3dFence->GetCompletedValue() < nFenceValue)
-	{
-		hResult = m_pd3dFence->SetEventOnCompletion(nFenceValue, m_hFenceEvent);
-		::WaitForSingleObject(m_hFenceEvent, INFINITE);
-	}
-}
 
 bool CGameFrameWork::OnCreate(HINSTANCE hInstance, HWND hMainWnd)
 {
@@ -518,7 +507,18 @@ void CGameFrameWork::WaitForGpuComplete()
 		::WaitForSingleObject(m_hFenceEvent, INFINITE);
 	}
 }
+void CGameFrameWork::MoveToNextFrame()
+{
+	m_nSwapChainBufferIndex = m_pdxgiSwapChain->GetCurrentBackBufferIndex();
 
+	UINT64 nFenceValue = ++m_nFenceValues[m_nSwapChainBufferIndex];
+	DXCall(m_pd3dCommandQueue->Signal(m_pd3dFence, nFenceValue));
+	if (m_pd3dFence->GetCompletedValue() < nFenceValue)
+	{
+		DXCall(m_pd3dFence->SetEventOnCompletion(nFenceValue, m_hFenceEvent));
+		::WaitForSingleObject(m_hFenceEvent, INFINITE);
+	}
+}
 void CGameFrameWork::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
 {
 	switch (nMessageID)
