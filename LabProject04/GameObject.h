@@ -1,6 +1,7 @@
 #pragma once
 #include "Mesh.h"
 class CShader;
+
 class CGameObject
 {
 public:
@@ -16,11 +17,9 @@ protected:
 	CMesh* m_pMesh = NULL;
 	CShader* m_pShader = NULL;
 public:
-	void ReleaseUploadBuffers();
-	virtual void SetMesh(CMesh *pMesh);
-	virtual void SetShader(CShader *pShader);
+	void ReleaseUploadBuffers(); virtual void SetMesh(CMesh* pMesh);
+	virtual void SetShader(CShader* pShader);
 	virtual void Animate(float fTimeElapsed);
 	virtual void OnPrepareRender();
-	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
 };
-

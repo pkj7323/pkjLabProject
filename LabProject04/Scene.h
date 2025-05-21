@@ -22,12 +22,13 @@ public:
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device *pd3dDevice);
 	ID3D12RootSignature* GetGraphicsRootSignature();
 
+	
 
 protected:
 	//씬은 셰이더들의 집합이다. 셰이더들은 게임 객체들의 집합이다.
-	CShader **m_ppShaders = NULL;
+	CShader** m_ppShaders = NULL;
 	int m_nShaders = 0;
+
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = NULL;
-	ID3D12PipelineState* m_pd3dPipelineState = NULL;
 };
 

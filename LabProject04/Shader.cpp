@@ -1,10 +1,6 @@
 #include "stdafx.h"
 #include "Shader.h"
 
-CShader::CShader()
-{
-}
-
 CShader::~CShader()
 {
 	if (m_ppd3dPipelineStates)
@@ -40,6 +36,7 @@ D3D12_RASTERIZER_DESC CShader::CreateRasterizerState()
 {
 	D3D12_RASTERIZER_DESC d3dRasterizerDesc;
 	::ZeroMemory(&d3dRasterizerDesc, sizeof(D3D12_RASTERIZER_DESC));
+
 	d3dRasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 	d3dRasterizerDesc.CullMode = D3D12_CULL_MODE_BACK;
 	d3dRasterizerDesc.FrontCounterClockwise = FALSE;
@@ -58,6 +55,7 @@ D3D12_BLEND_DESC CShader::CreateBlendState()
 {
 	D3D12_BLEND_DESC d3dBlendDesc;
 	::ZeroMemory(&d3dBlendDesc, sizeof(D3D12_BLEND_DESC));
+
 	d3dBlendDesc.AlphaToCoverageEnable = FALSE;
 	d3dBlendDesc.IndependentBlendEnable = FALSE;
 	d3dBlendDesc.RenderTarget[0].BlendEnable = FALSE;
@@ -77,6 +75,7 @@ D3D12_DEPTH_STENCIL_DESC CShader::CreateDepthStencilState()
 {
 	D3D12_DEPTH_STENCIL_DESC d3dDepthStencilDesc;
 	::ZeroMemory(&d3dDepthStencilDesc, sizeof(D3D12_DEPTH_STENCIL_DESC));
+	
 	d3dDepthStencilDesc.DepthEnable = TRUE;
 	d3dDepthStencilDesc.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	d3dDepthStencilDesc.DepthFunc = D3D12_COMPARISON_FUNC_LESS;
@@ -114,7 +113,7 @@ D3D12_SHADER_BYTECODE CShader::CompileShaderFromFile(const WCHAR* pszFileName, L
 	HRESULT hr = ::D3DCompileFromFile(pszFileName, NULL, NULL, pszShaderName, pszShaderProfile,
 									  nCompileFlags, 0, ppd3dShaderBlob, &pErrorBlob);
 
-	if (FAILED(hr))
+	if (DXCall(hr))
 	{
 		if (pErrorBlob)
 		{
@@ -184,7 +183,6 @@ void CShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* 
 	m_ppObjects = new CGameObject * [m_nObjects];
 	m_ppObjects[0] = new CGameObject();
 	m_ppObjects[0]->SetMesh(pTriangleMesh);
-	//m_ppObjects[0]->SetShader(this); // 셰이더를 게임 객체에 설정
 
 }
 

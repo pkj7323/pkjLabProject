@@ -3,6 +3,9 @@
 
 #include "stdafx.h"
 #include "LabProject04.h"
+#include "GameFrameWork.h"
+
+CGameFramework g_GameFramework;
 
 #define MAX_LOADSTRING 100
 
@@ -59,10 +62,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
         else
         {
-            g_GameFrameWork.FrameAdvance();
+            g_GameFramework.FrameAdvance();
         }
     }
-    g_GameFrameWork.OnDestroy();
+    g_GameFramework.OnDestroy();
 
     return (int)msg.wParam;
 }
@@ -107,21 +110,21 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-    
-
     ghAppInstance = hInstance; // 인스턴스 핸들을 전역 변수에 저장합니다.
-    RECT rc = { 0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT };
+
+	RECT rc = { 0, 0, FRAME_BUFFER_WIDTH, FRAME_BUFFER_HEIGHT };
 
     DWORD dwstyle = WS_OVERLAPPEDWINDOW | WS_CAPTION | WS_MINIMIZEBOX | WS_SYSMENU | WS_BORDER;
     AdjustWindowRect(&rc, dwstyle, FALSE);
-    HWND hMainWnd = CreateWindowW(szWindowClass, szTitle, dwstyle, CW_USEDEFAULT, CW_USEDEFAULT,
-                              rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
+
+    HWND hMainWnd = CreateWindowW(szWindowClass, szTitle, dwstyle,
+                                  CW_USEDEFAULT, CW_USEDEFAULT,rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInstance, nullptr);
 
     if (!hMainWnd)
     	return FALSE;
     
 
-    g_GameFrameWork.OnCreate(hInstance, hMainWnd);
+    g_GameFramework.OnCreate(hInstance, hMainWnd);
 
     ShowWindow(hMainWnd, nCmdShow);
     UpdateWindow(hMainWnd);
@@ -153,7 +156,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_MOUSEMOVE:
         case WM_KEYDOWN:
         case WM_KEYUP:
-            g_GameFrameWork.OnProcessingWindowMessage(hWnd, message, wParam, lParam);
+            g_GameFramework.OnProcessingWindowMessage(hWnd, message, wParam, lParam);
             break;
         case WM_DESTROY:
             PostQuitMessage(0);

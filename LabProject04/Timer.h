@@ -5,8 +5,9 @@ class CGameTimer
 public:
 	CGameTimer();
 	virtual ~CGameTimer();
-	void Stop();
-	void Start();
+
+	void Stop() {}
+	void Start() {}
 	void Reset();
 	void Tick(float fLockFPS = 0.0f);	//타이머 갱신
 	ULONG GetFrameRate(LPTSTR lpszString = nullptr, int nCharacters = 0);	//프레임레이트 반환
@@ -20,7 +21,7 @@ private:
 	__int64			m_nPerformanceFrequency;			//Performance Counter의 주파수
 
 	float			m_fFrameTime[MAX_SAMPLE_COUNT];		//프레임 시간을 누적하기 위한 배열
-	unsigned long	m_nSampleCount;						//누적된 프레임 횟수
+	ULONG			m_nSampleCount;						//누적된 프레임 횟수
 
 	unsigned long	m_nCurrentFrameRate;				//현재 프레임 레이트
 	unsigned long	m_nFramesPerSecond;					//초당 프레임 수
