@@ -67,7 +67,7 @@ inline HRESULT DXCall(HRESULT hr)
 #endif
 #endif // DEBUG
 //#define _WITH_SWAPCHAIN_FULLSCREEN_STATE
-
+#define RANDOM_COLOR XMFLOAT4(rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX), rand() / float(RAND_MAX))
 extern ID3D12Resource *CreateBufferResource(ID3D12Device *pd3dDevice,
 											ID3D12GraphicsCommandList *pd3dCommandList, 
 											void *pData, UINT nBytes,

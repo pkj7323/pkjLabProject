@@ -74,12 +74,13 @@ ID3D12RootSignature* CScene::GetGraphicsRootSignature()
 void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
     m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
-    CTriangleMesh *pMesh = new CTriangleMesh(pd3dDevice, pd3dCommandList);
+    //가로x세로x깊이가 12x12x12인 정육면체 메쉬를 생성한다.
+    CCubeMeshDiffused *pCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList,
+                                                         12.0f, 12.0f, 12.0f);
     m_nObjects = 1;
-    m_ppObjects = new CGameObject* [m_nObjects];
+    m_ppObjects = new CGameObject * [m_nObjects];
     CRotatingObject *pRotatingObject = new CRotatingObject();
-    pRotatingObject->SetMesh(pMesh);
-
+    pRotatingObject->SetMesh(pCubeMesh);
     CDiffusedShader *pShader = new CDiffusedShader();
     pShader->CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
     pShader->CreateShaderVariables(pd3dDevice, pd3dCommandList);
