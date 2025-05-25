@@ -31,6 +31,22 @@ void CGameObject::SetMesh(CMesh* pMesh)
 	if (m_pMesh) m_pMesh->AddRef();
 }
 
+void CGameObject::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+{
+}
+
+void CGameObject::UpdateShaderVariables(ID3D12GraphicsCommandList* pd3dCommandList)//월드 행렬를 셰이더 상수 버퍼로 복사한다.
+{
+	XMFLOAT4X4 xmf4x4World;
+	XMStoreFloat4x4(&xmf4x4World, XMMatrixTranspose(XMLoadFloat4x4(&m_xmf4x4World)));
+	//객체의 월드 변환 행렬을 루트 상수(32-비트 값)를 통하여 셰이더 변수(상수 버퍼)로 복사한다.
+	pd3dCommandList->SetGraphicsRoot32BitConstants(0, 16, &xmf4x4World, 0);
+}
+
+void CGameObject::ReleaseShaderVariables()
+{
+}
+
 void CGameObject::ReleaseUploadBuffers()
 {
 	//정점 버퍼를 위한 업로드 버퍼를 소멸시킨다. 
@@ -47,14 +63,14 @@ void CGameObject::OnPrepareRender()
 void CGameObject::Render(ID3D12GraphicsCommandList* pd3dCommandList ,CCamera* pCamera)
 {
 	OnPrepareRender();
-	if (m_pShader)
-	{
-		//게임 객체의 월드 변환 행렬을 셰이더의 상수 버퍼로 전달(복사)한다.
-		m_pShader->UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
-		m_pShader->Render(pd3dCommandList, pCamera);
-	}
+
+	//객체의 정보를 셰이더 변수(상수 버퍼)로 복사한다.
+	UpdateShaderVariables(pd3dCommandList);//월드 행렬을 매 프레임마다 갱신해서 넣어주는 함수
+
+	if (m_pShader) m_pShader->Render(pd3dCommandList, pCamera);
 	if (m_pMesh) m_pMesh->Render(pd3dCommandList);
 }
+
 
 void CGameObject::Rotate(XMFLOAT3* xmf3RotationAxis, float fAngle)
 {
@@ -71,6 +87,82 @@ void CGameObject::Rotate(XMFLOAT3* xmf3RotationAxis, float fAngle)
 	mtxWorld = XMMatrixMultiply(mtxRotate, mtxWorld);
 	// 결과를 다시 저장
 	XMStoreFloat4x4(&m_xmf4x4World, mtxWorld);
+}
+XMFLOAT3 CGameObject::GetPosition()
+{
+	return(XMFLOAT3(m_xmf4x4World._41, m_xmf4x4World._42, m_xmf4x4World._43));
+}
+
+XMFLOAT3 CGameObject::GetLook() const
+{
+	return(Vector3::Normalize(XMFLOAT3(m_xmf4x4World._31, m_xmf4x4World._32, m_xmf4x4World._33)));
+}
+
+XMFLOAT3 CGameObject::GetUp() const
+{
+	return(Vector3::Normalize(XMFLOAT3(m_xmf4x4World._21, m_xmf4x4World._22, m_xmf4x4World._23)));
+}
+
+XMFLOAT3 CGameObject::GetRight() const
+{
+	return(Vector3::Normalize(XMFLOAT3(m_xmf4x4World._11, m_xmf4x4World._12, m_xmf4x4World._13)));
+}
+
+void CGameObject::SetPosition(float x, float y, float z)
+{
+	m_xmf4x4World._41 = x;
+	m_xmf4x4World._42 = y;
+	m_xmf4x4World._43 = z;
+}
+
+void CGameObject::SetPosition(XMFLOAT3 xmf3Position)
+{
+	SetPosition(xmf3Position.x, xmf3Position.y, xmf3Position.z);
+}
+
+void CGameObject::MoveStrafe(float fDistance)
+{
+	XMFLOAT3 xmf3Position = GetPosition();
+	XMFLOAT3 xmf3Right = GetRight();
+	xmf3Position = Vector3::Add(xmf3Position, xmf3Right, fDistance);
+	CGameObject::SetPosition(xmf3Position);
+}
+
+void CGameObject::MoveUp(float fDistance)
+{
+	XMFLOAT3 xmf3Position = GetPosition();
+	XMFLOAT3 xmf3Up = GetUp();
+	xmf3Position = Vector3::Add(xmf3Position, xmf3Up, fDistance);
+	CGameObject::SetPosition(xmf3Position);
+}
+
+void CGameObject::MoveForward(float fDistance)
+{
+	XMFLOAT3 xmf3Position = GetPosition();
+	XMFLOAT3 xmf3Look = GetLook();
+	xmf3Position = Vector3::Add(xmf3Position, xmf3Look, fDistance);
+	CGameObject::SetPosition(xmf3Position);
+}
+
+void CGameObject::Rotate(float fPitch, float fYaw, float fRoll)
+{
+	// 기존 코드 (오일러 각 기반)
+// XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(fPitch), XMConvertToRadians(fYaw), XMConvertToRadians(fRoll));
+// XMMATRIX mtxWorld = XMLoadFloat4x4(&m_xmf4x4World);
+// mtxWorld = XMMatrixMultiply(mtxRotate, mtxWorld);
+// XMStoreFloat4x4(&m_xmf4x4World, mtxWorld);
+
+// 사원수(쿼터니언) 기반 회전으로 변경
+	XMVECTOR qRot = XMQuaternionRotationRollPitchYaw(
+		XMConvertToRadians(fPitch),
+		XMConvertToRadians(fYaw),
+		XMConvertToRadians(fRoll)
+	);
+	XMMATRIX mtxRotate = XMMatrixRotationQuaternion(qRot);
+	XMMATRIX mtxWorld = XMLoadFloat4x4(&m_xmf4x4World);
+	mtxWorld = XMMatrixMultiply(mtxRotate, mtxWorld);
+	XMStoreFloat4x4(&m_xmf4x4World, mtxWorld);
+
 }
 ///////////////////////////////////////
 CRotatingObject::CRotatingObject()
