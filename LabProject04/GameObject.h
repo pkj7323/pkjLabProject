@@ -1,4 +1,5 @@
 #pragma once
+#include "Camera.h"
 #include "Mesh.h"
 class CShader;
 
@@ -21,5 +22,21 @@ public:
 	virtual void SetShader(CShader* pShader);
 	virtual void Animate(float fTimeElapsed);
 	virtual void OnPrepareRender();
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera);
+
+public:
+	void Rotate(XMFLOAT3* xmf3RotationAxis, float fAngle);
+};
+class CRotatingObject : public CGameObject
+{
+public:
+	CRotatingObject();
+	virtual ~CRotatingObject();
+private:
+	XMFLOAT3 m_xmf3RotationAxis;
+	float m_fRotationSpeed;
+public:
+	void SetRotationSpeed(float fRotationSpeed) { m_fRotationSpeed = fRotationSpeed; }
+	void SetRotationAxis(XMFLOAT3 xmf3RotationAxis) { m_xmf3RotationAxis = xmf3RotationAxis; }
+	void Animate(float fTimeElapsed) override;
 };

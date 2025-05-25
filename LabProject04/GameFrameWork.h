@@ -1,4 +1,5 @@
 #pragma once
+#include "Camera.h"
 #include "Timer.h"
 #include "Scene.h"
 
@@ -46,7 +47,7 @@ public:
 
 
 	void MoveToNextFrame();
-
+	CCamera* m_pCamera = nullptr; // 카메라 객체에 대한 포인터, 씬을 렌더링할 때 사용됨
 private:
 
 	CGameTimer m_GameTimer; // 프레임워크에서 사용할 타이머
@@ -100,9 +101,7 @@ private:
 	HANDLE m_hFenceEvent;
 	// 펜스 인터페이스 포인터, 펜스의 값, 이벤트 핸들
 
-	D3D12_VIEWPORT m_d3dViewport;
-	D3D12_RECT m_d3dScissorRect;
-	// 뷰포트와 씨저 사각형
+	
 
 
 	CScene* m_pScene;
