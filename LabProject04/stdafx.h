@@ -88,8 +88,7 @@ namespace Vector3
 	{
 		XMFLOAT3 xmf3Result;
 		if (bNormalize)
-			XMStoreFloat3(&xmf3Result, XMVector3Normalize(XMLoadFloat3(&xmf3Vector)) *
-						  fScalar);
+			XMStoreFloat3(&xmf3Result, XMVector3Normalize(XMLoadFloat3(&xmf3Vector)) * fScalar);
 		else
 			XMStoreFloat3(&xmf3Result, XMLoadFloat3(&xmf3Vector) * fScalar);
 		return(xmf3Result);
