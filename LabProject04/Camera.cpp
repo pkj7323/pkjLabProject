@@ -133,8 +133,9 @@ void CSpaceShipCamera::Rotate(float x, float y, float z)
 	{
 		//플레이어의 로컬 x-축에 대한 x 각도의 회전 행렬을 계산한다.
 		XMFLOAT3 xmf3Right = m_pPlayer->GetRightVector();
-		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Right),
-													XMConvertToRadians(x));
+		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&m_xmf3Right), XMConvertToRadians(x));
+		XMMATRIX xmmtxRotate = XMMatrixRotationQuaternion(qutRotate);
+		
 		//카메라의 로컬 x-축, y-축, z-축을 회전한다.
 		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
 		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
@@ -150,8 +151,8 @@ void CSpaceShipCamera::Rotate(float x, float y, float z)
 	if (m_pPlayer && (y != 0.0f))
 	{
 		XMFLOAT3 xmf3Up = m_pPlayer->GetUpVector();
-		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Up),
-													XMConvertToRadians(y));
+		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&m_xmf3Up), XMConvertToRadians(y));
+		XMMATRIX xmmtxRotate = XMMatrixRotationQuaternion(qutRotate);
 		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
 		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
 		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
@@ -162,8 +163,8 @@ void CSpaceShipCamera::Rotate(float x, float y, float z)
 	if (m_pPlayer && (z != 0.0f))
 	{
 		XMFLOAT3 xmf3Look = m_pPlayer->GetLookVector();
-		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Look),
-													XMConvertToRadians(z));
+		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&m_xmf3Look), XMConvertToRadians(z));
+		XMMATRIX xmmtxRotate = XMMatrixRotationQuaternion(qutRotate);
 		m_xmf3Right = Vector3::TransformNormal(m_xmf3Right, xmmtxRotate);
 		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
 		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
@@ -199,8 +200,9 @@ void CFirstPersonCamera::Rotate(float x, float y, float z)
 	if (x != 0.0f)
 	{
 		//카메라의 로컬 x-축을 기준으로 회전하는 행렬을 생성한다. 사람의 경우 고개를 끄떡이는 동작이다.
-		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Right),
-													XMConvertToRadians(x));
+		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&m_xmf3Right), XMConvertToRadians(x));
+		XMMATRIX xmmtxRotate = XMMatrixRotationQuaternion(qutRotate);
+
 		//카메라의 로컬 x-축, y-축, z-축을 회전 행렬을 사용하여 회전한다.
 		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
 		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
@@ -210,8 +212,9 @@ void CFirstPersonCamera::Rotate(float x, float y, float z)
 	{
 		//플레이어의 로컬 y-축을 기준으로 회전하는 행렬을 생성한다.
 		XMFLOAT3 xmf3Up = m_pPlayer->GetUpVector();
-		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Up),
-													XMConvertToRadians(y));
+		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&xmf3Up), XMConvertToRadians(y));
+		XMMATRIX xmmtxRotate = XMMatrixRotationQuaternion(qutRotate);
+		
 		//카메라의 로컬 x-축, y-축, z-축을 회전 행렬을 사용하여 회전한다.
 		m_xmf3Look = Vector3::TransformNormal(m_xmf3Look, xmmtxRotate);
 		m_xmf3Up = Vector3::TransformNormal(m_xmf3Up, xmmtxRotate);
@@ -221,8 +224,9 @@ void CFirstPersonCamera::Rotate(float x, float y, float z)
 	{
 		//플레이어의 로컬 z-축을 기준으로 회전하는 행렬을 생성한다.
 		XMFLOAT3 xmf3Look = m_pPlayer->GetLookVector();
-		XMMATRIX xmmtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&xmf3Look),
-													XMConvertToRadians(z));
+		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&xmf3Look), XMConvertToRadians(y));
+		XMMATRIX xmmtxRotate = XMMatrixRotationQuaternion(qutRotate);
+		
 		//카메라의 위치 벡터를 플레이어 좌표계로 표현한다(오프셋 벡터).
 		m_xmf3Position = Vector3::Subtract(m_xmf3Position, m_pPlayer->GetPosition());
 		//오프셋 벡터 벡터를 회전한다.

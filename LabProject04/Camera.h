@@ -24,9 +24,7 @@ protected:
 	XMFLOAT3 m_xmf3Right;
 	XMFLOAT3 m_xmf3Up;
 	XMFLOAT3 m_xmf3Look;
-		
-	
-	
+
 	//카메라가 x-축, z-축, y-축으로 얼마만큼 회전했는 가를 나타내는 각도이다.
 	float m_fPitch;
 	float m_fRoll;

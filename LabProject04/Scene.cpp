@@ -67,7 +67,7 @@ ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevic
 
 ID3D12RootSignature* CScene::GetGraphicsRootSignature()
 {
-    return(m_pd3dGraphicsRootSignature);
+    return (m_pd3dGraphicsRootSignature);
 }
 
 
@@ -82,13 +82,17 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 
 void CScene::ReleaseObjects()
 {
-    if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
+    if (m_pd3dGraphicsRootSignature)
+    {
+        m_pd3dGraphicsRootSignature->Release();
+    }
     for (int i = 0; i < m_nShaders; i++)
     {
         m_pShaders[i].ReleaseShaderVariables();
         m_pShaders[i].ReleaseObjects();
     }
-    if (m_pShaders) delete[] m_pShaders;
+
+    delete[] m_pShaders;
 }
 
 bool CScene::ProcessInput(UCHAR* pKeysBuffer)
@@ -97,13 +101,13 @@ bool CScene::ProcessInput(UCHAR* pKeysBuffer)
 }
 void CScene::ReleaseUploadBuffers()
 {
-    for (int i = 0; i < m_nShaders; i++) m_pShaders[i].ReleaseUploadBuffers();
+    for (int i = 0; i < m_nShaders; i++) 
+        m_pShaders[i].ReleaseUploadBuffers();
 }
 
 
 void CScene::AnimateObjects(float fTimeElapsed)
 {
-
     for (int i = 0; i < m_nShaders; i++)
     {
         m_pShaders[i].AnimateObjects(fTimeElapsed);
