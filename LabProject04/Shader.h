@@ -13,13 +13,14 @@ struct VS_VB_INSTANCE
 class CShader
 {
 public:
-	CShader() {};
+	CShader() = default;
 	virtual ~CShader();
 private:
 	int m_nReferences = 0;
 public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
+
 	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
 	virtual D3D12_RASTERIZER_DESC CreateRasterizerState();
 	virtual D3D12_BLEND_DESC CreateBlendState();

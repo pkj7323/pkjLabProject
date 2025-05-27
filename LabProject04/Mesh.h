@@ -5,7 +5,8 @@ class CVertex
 {
 protected:
 	//정점의 위치 벡터이다(모든 정점은 최소한 위치 벡터를 가져야 한다). 
-XMFLOAT3 m_xmf3Position; public:
+	XMFLOAT3 m_xmf3Position;
+public:
 	CVertex() { m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); }
 	CVertex(XMFLOAT3 xmf3Position) { m_xmf3Position = xmf3Position; }
 	~CVertex() {}
