@@ -2,6 +2,7 @@
 #include "Camera.h"
 #include "Timer.h"
 #include "Scene.h"
+#include "Player.h"
 
 class CGameFramework
 {
@@ -47,6 +48,11 @@ public:
 
 
 	void MoveToNextFrame();
+public:
+	//플레이어 객체에 대한 포인터이다.
+	CPlayer *m_pPlayer = NULL;
+	//마지막으로 마우스 버튼을 클릭할 때의 마우스 커서의 위치이다.
+	POINT m_ptOldCursorPos;
 	CCamera* m_pCamera = nullptr; // 카메라 객체에 대한 포인터, 씬을 렌더링할 때 사용됨
 private:
 
