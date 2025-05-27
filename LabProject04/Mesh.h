@@ -72,7 +72,10 @@ protected:
 	int m_nBaseVertex = 0;
 	//인덱스 버퍼의 인덱스에 더해질 인덱스이다. 
 public:
-	virtual void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	void Render(ID3D12GraphicsCommandList* pd3dCommandList);
+	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, UINT nInstances);
+	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, UINT nInstances,
+						D3D12_VERTEX_BUFFER_VIEW d3dInstancingBufferView);
 };
 
 class CTriangleMesh : public CMesh
