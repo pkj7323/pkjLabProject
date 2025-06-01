@@ -409,7 +409,10 @@ void CInstancingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
-void CInstancingShader::ReleaseObjects() { CObjectsShader::ReleaseObjects(); }
+void CInstancingShader::ReleaseObjects()
+{
+	CObjectsShader::ReleaseObjects();
+}
 
 void CInstancingShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
