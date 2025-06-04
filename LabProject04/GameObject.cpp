@@ -153,12 +153,12 @@ void CGameObject::MoveForward(float fDistance)
 void CGameObject::Rotate(float fPitch, float fYaw, float fRoll)
 {
 	// 기존 코드 (오일러 각 기반)
-// XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(fPitch), XMConvertToRadians(fYaw), XMConvertToRadians(fRoll));
-// XMMATRIX mtxWorld = XMLoadFloat4x4(&m_xmf4x4World);
-// mtxWorld = XMMatrixMultiply(mtxRotate, mtxWorld);
-// XMStoreFloat4x4(&m_xmf4x4World, mtxWorld);
+	// XMMATRIX mtxRotate = XMMatrixRotationRollPitchYaw(XMConvertToRadians(fPitch), XMConvertToRadians(fYaw), XMConvertToRadians(fRoll));
+	// XMMATRIX mtxWorld = XMLoadFloat4x4(&m_xmf4x4World);
+	// mtxWorld = XMMatrixMultiply(mtxRotate, mtxWorld);
+	// XMStoreFloat4x4(&m_xmf4x4World, mtxWorld);
 
-// 사원수(쿼터니언) 기반 회전으로 변경
+	// 사원수(쿼터니언) 기반 회전으로 변경
 	XMVECTOR qRot = XMQuaternionRotationRollPitchYaw(
 		XMConvertToRadians(fPitch),
 		XMConvertToRadians(fYaw),

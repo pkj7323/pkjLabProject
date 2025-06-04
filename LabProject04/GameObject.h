@@ -33,7 +33,7 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera, UINT nInstances, D3D12_VERTEX_BUFFER_VIEW d3dInstancingBufferView);
 
 	//게임 객체의 월드 변환 행렬에서 위치 벡터와 방향(x-축, y-축, z-축) 벡터를 반환한다.
-	XMFLOAT3 GetPosition();
+	virtual XMFLOAT3 GetPosition();
 	XMFLOAT3 GetLook() const;// 정규화됨
 	XMFLOAT3 GetUp() const;// 정규화됨
 	XMFLOAT3 GetRight() const;// 정규화됨

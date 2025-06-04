@@ -54,11 +54,11 @@ public:
 	virtual void CreateShader(ID3D12Device *pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature);
 };
 
-class CObjectsShader : public CShader
+class ObjectsShader : public CShader
 {
 public:
-	CObjectsShader();
-	virtual ~CObjectsShader();
+	ObjectsShader();
+	virtual ~ObjectsShader();
 	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList*pd3dCommandList);
 	virtual void AnimateObjects(float fTimeElapsed);
 	virtual void ReleaseObjects();
@@ -73,7 +73,7 @@ protected:
 	int m_nObjects = 0;
 };
 
-class CInstancingShader : public CObjectsShader
+class CInstancingShader : public ObjectsShader
 {
 public:
 	CInstancingShader();
