@@ -224,7 +224,7 @@ void CFirstPersonCamera::Rotate(float x, float y, float z)
 	{
 		//플레이어의 로컬 z-축을 기준으로 회전하는 행렬을 생성한다.
 		XMFLOAT3 xmf3Look = m_pPlayer->GetLookVector();
-		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&xmf3Look), XMConvertToRadians(y));
+		XMVECTOR qutRotate = XMQuaternionRotationAxis(XMLoadFloat3(&xmf3Look), XMConvertToRadians(z));
 		XMMATRIX xmmtxRotate = XMMatrixRotationQuaternion(qutRotate);
 		
 		//카메라의 위치 벡터를 플레이어 좌표계로 표현한다(오프셋 벡터).
