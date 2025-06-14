@@ -54,12 +54,12 @@ public:
 	virtual void CreateShader(ID3D12Device *pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature);
 };
 
-class ObjectsShader : public CShader
+class CObjectsShader : public CShader
 {
 public:
-	ObjectsShader();
-	virtual ~ObjectsShader();
-	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList*pd3dCommandList);
+	CObjectsShader();
+	virtual ~CObjectsShader();
+	virtual void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList*pd3dCommandList, void *pContext);
 	virtual void AnimateObjects(float fTimeElapsed);
 	virtual void ReleaseObjects();
 	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
@@ -73,7 +73,7 @@ protected:
 	int m_nObjects = 0;
 };
 
-class CInstancingShader : public ObjectsShader
+class CInstancingShader : public CObjectsShader
 {
 public:
 	CInstancingShader();
@@ -96,4 +96,16 @@ protected:
 	ID3D12Resource*				m_pd3dcbGameObjects = NULL;
 	VS_VB_INSTANCE*				m_pcbMappedGameObjects = NULL;
 	D3D12_VERTEX_BUFFER_VIEW	m_d3dInstancingBufferView;
+};
+
+class CTerrainShader : public CShader
+{
+public:
+	CTerrainShader();
+	virtual ~CTerrainShader();
+	virtual D3D12_INPUT_LAYOUT_DESC CreateInputLayout();
+	virtual D3D12_SHADER_BYTECODE CreateVertexShader(ID3DBlob **ppd3dShaderBlob);
+	virtual D3D12_SHADER_BYTECODE CreatePixelShader(ID3DBlob **ppd3dShaderBlob);
+	virtual void CreateShader(ID3D12Device *pd3dDevice, ID3D12RootSignature
+							  *pd3dGraphicsRootSignature);
 };
