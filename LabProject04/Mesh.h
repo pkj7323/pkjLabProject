@@ -12,6 +12,7 @@ struct CIlluminatedVertex
 {
 	XMFLOAT3 m_xmf3Position;
 	XMFLOAT3 m_xmf3Normal;
+	XMFLOAT4 m_xmf4Color; // 색상 정보 추가
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,4 +169,11 @@ class CScreenAlignedTriangleMesh : public CMesh
 public:
 	CScreenAlignedTriangleMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
 	virtual ~CScreenAlignedTriangleMesh();
+};
+
+class CObjMesh : public CMesh
+{
+public:
+	CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const std::string& pstrFileName);
+	virtual ~CObjMesh();
 };

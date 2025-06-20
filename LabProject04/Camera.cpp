@@ -188,19 +188,20 @@ void CThirdPersonCamera::Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed)
 		xmf4x4Rotate._13 = xmf3Right.z; xmf4x4Rotate._23 = xmf3Up.z; xmf4x4Rotate._33 = xmf3Look.z;
 
 		XMFLOAT3 xmf3Offset = Vector3::TransformCoord(m_xmf3Offset, xmf4x4Rotate);
-		XMFLOAT3 xmf3Position = Vector3::Add(m_pPlayer->GetPosition(), xmf3Offset);
-		XMFLOAT3 xmf3Direction = Vector3::Subtract(xmf3Position, m_xmf3Position);
-		float fLength = Vector3::Length(xmf3Direction);
-		xmf3Direction = Vector3::Normalize(xmf3Direction);
-		float fTimeLagScale = (m_fTimeLag) ? fTimeElapsed * (1.0f / m_fTimeLag) : 1.0f;
-		float fDistance = fLength * fTimeLagScale;
-		if (fDistance > fLength) fDistance = fLength;
-		if (fLength < 0.01f) fDistance = fLength;
-		if (fDistance > 0)
+		XMFLOAT3 xmf3TargetPosition = Vector3::Add(m_pPlayer->GetPosition(), xmf3Offset);
+
+		// --- Lerp(선형 보간) 적용: m_fTimeLag가 0이면 즉시 이동, 0.1~0.5 정도면 부드럽게 따라감 ---
+		if (m_fTimeLag > 0.0f)
 		{
-			m_xmf3Position = Vector3::Add(m_xmf3Position, xmf3Direction, fDistance);
-			SetLookAt(xmf3LookAt);
+			m_xmf3Position = Vector3::Lerp(m_xmf3Position, xmf3TargetPosition, 1.0f - expf(-fTimeElapsed / m_fTimeLag));
 		}
+		else
+		{
+			m_xmf3Position = xmf3TargetPosition;
+		}
+		// ----------------------------------------------------------------------
+
+		SetLookAt(xmf3LookAt);
 	}
 }
 
@@ -210,6 +211,27 @@ void CThirdPersonCamera::SetLookAt(const XMFLOAT3& vLookAt)
 	m_xmf3Right = XMFLOAT3(mtxLookAt._11, mtxLookAt._21, mtxLookAt._31);
 	m_xmf3Up = XMFLOAT3(mtxLookAt._12, mtxLookAt._22, mtxLookAt._32);
 	m_xmf3Look = XMFLOAT3(mtxLookAt._13, mtxLookAt._23, mtxLookAt._33);
+}
+
+void CThirdPersonCamera::Rotate(float fPitch, float fYaw, float fRoll)
+{
+	if (!m_pPlayer) return;
+
+	// Yaw(좌우) 회전: 플레이어의 Up 벡터를 축으로 카메라의 오프셋을 회전시킵니다.
+	if (fYaw != 0.0f)
+	{
+		XMMATRIX mtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_pPlayer->GetUpVector()), XMConvertToRadians(fYaw));
+		m_xmf3Offset = Vector3::TransformCoord(m_xmf3Offset, mtxRotate);
+	}
+	// Pitch(상하) 회전: 카메라의 Right 벡터를 축으로 카메라의 오프셋을 회전시킵니다.
+	if (fPitch != 0.0f)
+	{
+		XMMATRIX mtxRotate = XMMatrixRotationAxis(XMLoadFloat3(&m_xmf3Right), XMConvertToRadians(fPitch));
+		m_xmf3Offset = Vector3::TransformCoord(m_xmf3Offset, mtxRotate);
+	}
+
+	// 카메라의 위치를 플레이어 위치 + 새로운 오프셋으로 업데이트합니다.
+	m_xmf3Position = Vector3::Add(m_pPlayer->GetPosition(), m_xmf3Offset);
 }
 
 // CSpaceShipCamera는 현재 프로젝트에서 사용하지 않으므로 구현을 생략하거나 간단히 남겨둡니다.

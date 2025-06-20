@@ -157,18 +157,20 @@ void CShader::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamer
 CIlluminatedShader::CIlluminatedShader() {}
 CIlluminatedShader::~CIlluminatedShader() {}
 
-// Shader.cpp
 
 D3D12_INPUT_LAYOUT_DESC CIlluminatedShader::CreateInputLayout()
 {
-	UINT nInputElementDescs = 2;
+	UINT nInputElementDescs = 3; // 정점 요소가 3개 (위치, 법선, 색상)
 	D3D12_INPUT_ELEMENT_DESC *pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
 
-	// '위치' 정보는 0번 버퍼의 맨 앞에서부터 (Offset = 0) 읽습니다.
+	// '위치' 정보는 0번 버퍼의 맨 앞에서부터 (Offset = 0)
 	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 
-	// '법선' 정보도 0번 버퍼에서, 위치 정보(float3 = 12바이트) 바로 뒤에서부터 (Offset = 12) 읽습니다.
+	// '법선' 정보는 0번 버퍼에서, 위치 정보(12바이트) 바로 뒤에서부터 (Offset = 12)
 	pd3dInputElementDescs[1] = { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+
+	// '색상' 정보는 0번 버퍼에서, 법선 정보(12바이트) 바로 뒤에서부터 (Offset = 24)
+	pd3dInputElementDescs[2] = { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 
 	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
 	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;

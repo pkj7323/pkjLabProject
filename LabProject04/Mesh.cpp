@@ -154,7 +154,8 @@ void CMeshFromFile::Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubS
 	}
 }
 
-CMeshIlluminatedFromFile::CMeshIlluminatedFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, CMeshLoadInfo *pMeshInfo) : CMeshFromFile(pd3dDevice, pd3dCommandList, pMeshInfo)
+CMeshIlluminatedFromFile::CMeshIlluminatedFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, CMeshLoadInfo *pMeshInfo)
+	: CMeshFromFile(pd3dDevice, pd3dCommandList, pMeshInfo)
 {
 	m_pd3dNormalBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, pMeshInfo->m_pxmf3Normals, sizeof(XMFLOAT3) * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dNormalUploadBuffer);
 	m_d3dNormalBufferView.BufferLocation = m_pd3dNormalBuffer->GetGPUVirtualAddress();
@@ -195,11 +196,33 @@ void CMeshIlluminatedFromFile::Render(ID3D12GraphicsCommandList* pd3dCommandList
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 지형 메쉬 생성 클래스 구현부
 ////////////////////////////////////////////////////////////////////////////////////////////////
+// Mesh.cpp
+
+// CHeightMapGridMesh 생성자 위에 이 Helper 함수를 추가합니다.
+XMFLOAT4 OnGetColor(int x, int z, void* pContext)
+{
+	CHeightMapImage* pHeightMapImage = (CHeightMapImage*)pContext;
+	XMFLOAT3 xmf3LightDirection = XMFLOAT3(-1.0f, 1.0f, 1.0f);
+	xmf3LightDirection = Vector3::Normalize(xmf3LightDirection);
+	XMFLOAT4 xmf4IncidentLightColor(0.9f, 0.8f, 0.4f, 1.0f);
+
+	float fScale = Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x, z), xmf3LightDirection);
+	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x + 1, z), xmf3LightDirection);
+	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x + 1, z + 1), xmf3LightDirection);
+	fScale += Vector3::DotProduct(pHeightMapImage->GetHeightMapNormal(x, z + 1), xmf3LightDirection);
+	fScale = (fScale / 4.0f) + 0.05f;
+	if (fScale > 1.0f) fScale = 1.0f;
+	if (fScale < 0.25f) fScale = 0.25f;
+
+	XMFLOAT4 xmf4Color = Vector4::Multiply(xmf4IncidentLightColor, fScale);
+	return(xmf4Color);
+}
+
 
 CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale, void* pContext) : CMesh()
 {
 	m_nVertices = nWidth * nLength;
-	m_nStride = sizeof(CIlluminatedVertex); // 위치 + 법선
+	m_nStride = sizeof(CIlluminatedVertex);
 	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP;
 
 	std::vector<CIlluminatedVertex> pVertices(m_nVertices);
@@ -209,8 +232,15 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 	{
 		for (int x = xStart; x < (xStart + nWidth); x++, i++)
 		{
-			pVertices[i].m_xmf3Position = XMFLOAT3((x * xmf3Scale.x), pHeightMapImage->GetHeight((float)x, (float)z), (z * xmf3Scale.z));
+			float height = pHeightMapImage->GetHeight((float)x, (float)z);
+
+			// --- 수정된 부분 ---
+			// 높이 값(height)에도 Y스케일(xmf3Scale.y)을 곱해줍니다.
+			pVertices[i].m_xmf3Position = XMFLOAT3((x * xmf3Scale.x), height * xmf3Scale.y, (z * xmf3Scale.z));
+			// --- 여기까지 ---
+
 			pVertices[i].m_xmf3Normal = pHeightMapImage->GetHeightMapNormal(x, z);
+			pVertices[i].m_xmf4Color = OnGetColor(x, z, pContext);
 		}
 	}
 
@@ -219,11 +249,12 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 	m_d3dVertexBufferView.StrideInBytes = m_nStride;
 	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
 
+	// 인덱스 버퍼 생성 코드는 이전과 동일합니다.
 	m_nIndices = ((nWidth * 2) * (nLength - 1)) + (nLength - 2);
 	std::vector<UINT> pnIndices(m_nIndices);
 	for (int j = 0, z = 0; z < nLength - 1; z++)
 	{
-		if ((z % 2) == 0) // 왼쪽에서 오른쪽으로
+		if ((z % 2) == 0)
 		{
 			for (int x = 0; x < nWidth; x++)
 			{
@@ -232,7 +263,7 @@ CHeightMapGridMesh::CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsC
 				pnIndices[j++] = (UINT)((x + (z * nWidth)) + nWidth);
 			}
 		}
-		else // 오른쪽에서 왼쪽으로
+		else
 		{
 			for (int x = nWidth - 1; x >= 0; x--)
 			{
@@ -354,7 +385,7 @@ CHeightMapTerrain::CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	MATERIALLOADINFO materialInfo;
 	// 더 밝은 색상으로 설정
 	materialInfo.m_xmf4EmissiveColor = XMFLOAT4(0.1,0.1,0.1, 1.0f); // 기존 0.8 → 1.5
-	materialInfo.m_xmf4AlbedoColor = XMFLOAT4(0.8,0.4,0.3, 1.0f);   // 기존 1.0 → 1.5
+	materialInfo.m_xmf4AlbedoColor = XMFLOAT4(0.0,0.4,0.0, 1.0f);   // 기존 1.0 → 1.5
 	materialInfo.m_xmf4SpecularColor = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f); // specular도 약간 증가
 	pMaterial->SetMaterialColors(new CMaterialColors(&materialInfo));
 	pMaterial->SetIlluminatedShader();
@@ -448,3 +479,100 @@ CScreenAlignedTriangleMesh::CScreenAlignedTriangleMesh(ID3D12Device* pd3dDevice,
 }
 
 CScreenAlignedTriangleMesh::~CScreenAlignedTriangleMesh() {}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////
+// CObjMesh 구현부 (OBJ 파일 로더)
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+CObjMesh::CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const std::string& pstrFileName) : CMesh()
+{
+	// 파일에서 읽어온 데이터를 임시로 저장할 벡터들
+	std::vector<XMFLOAT3> positions;
+	std::vector<XMFLOAT3> normals;
+	std::vector<XMFLOAT2> texcoords; // 텍스처 좌표(vt)를 읽기 위한 벡터 추가
+
+	// 최종적으로 GPU에 보낼 정점과 인덱스 데이터
+	std::vector<CIlluminatedVertex> finalVertices;
+	std::vector<UINT> finalIndices;
+
+	std::ifstream file {pstrFileName};
+	if (! file)
+	{
+		TCHAR pstrDebug[256] = { 0 };
+		_stprintf_s(pstrDebug, 256, _T("오류: OBJ 파일을 찾을 수 없습니다: %hs\n"), pstrFileName);
+		OutputDebugString(pstrDebug);
+		__debugbreak();
+		return;
+	}
+
+	std::string line;
+	while (std::getline(file, line))
+	{
+		if (line.substr(0, 2) == "v ") // 정점 위치 (v x y z)
+		{
+			std::istringstream iss(line.substr(2));
+			XMFLOAT3 pos;
+			iss >> pos.x >> pos.y >> pos.z;
+			positions.push_back(pos);
+		}
+		else if (line.substr(0, 3) == "vn ") // 정점 법선 (vn x y z)
+		{
+			std::istringstream iss(line.substr(3));
+			XMFLOAT3 normal;
+			iss >> normal.x >> normal.y >> normal.z;
+			normals.push_back(normal);
+		}
+		else if (line.substr(0, 3) == "vt ") // **추가된 부분**: 텍스처 좌표 (vt u v)
+		{
+			std::istringstream iss(line.substr(3));
+			XMFLOAT2 texcoord;
+			iss >> texcoord.x >> texcoord.y;
+			texcoords.push_back(texcoord);
+		}
+		else if (line.substr(0, 2) == "f ") // **수정된 부분**: 면 정보 (f v/vt/vn ...)
+		{
+			std::istringstream iss(line.substr(2));
+			std::string part;
+			for (int i = 0; i < 3; ++i)
+			{
+				iss >> part;
+				size_t first_slash = part.find('/');
+				size_t second_slash = part.find('/', first_slash + 1);
+
+				UINT posIndex = std::stoul(part.substr(0, first_slash));
+				// 텍스처 인덱스는 읽지만 지금은 사용하지 않습니다.
+				// UINT texIndex = std::stoul(part.substr(first_slash + 1, second_slash - (first_slash + 1)));
+				UINT normalIndex = std::stoul(part.substr(second_slash + 1));
+
+				CIlluminatedVertex vertex;
+				vertex.m_xmf3Position = positions[posIndex - 1]; // OBJ 인덱스는 1부터 시작하므로 -1
+				vertex.m_xmf3Normal = normals[normalIndex - 1]; // OBJ 인덱스는 1부터 시작하므로 -1
+				vertex.m_xmf4Color = RANDOM_COLOR;
+
+				finalVertices.push_back(vertex);
+				finalIndices.push_back(finalVertices.size() - 1);
+			}
+		}
+	}
+
+	// 이하 버퍼 생성 코드는 이전과 동일합니다.
+	m_nVertices = finalVertices.size();
+	m_nStride = sizeof(CIlluminatedVertex);
+	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+
+	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, finalVertices.data(), m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dVertexUploadBuffer);
+	m_d3dVertexBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
+	m_d3dVertexBufferView.StrideInBytes = m_nStride;
+	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
+
+	m_nIndices = finalIndices.size();
+	m_pd3dIndexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, finalIndices.data(), sizeof(UINT) * m_nIndices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_INDEX_BUFFER, &m_pd3dIndexUploadBuffer);
+	m_d3dIndexBufferView.BufferLocation = m_pd3dIndexBuffer->GetGPUVirtualAddress();
+	m_d3dIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
+	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
+}
+
+CObjMesh::~CObjMesh()
+{}

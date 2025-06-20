@@ -22,20 +22,21 @@ CScene::~CScene()
 
 void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
 {
-	// 1. 조명, 재질 등 모든 것을 렌더링할 수 있는 루트 시그니처를 생성합니다.
 	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
 
-	// 2. CMaterial 클래스가 조명 셰이더를 사용할 수 있도록 준비시킵니다.
 	CMaterial::PrepareShaders(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
 
-	// 3. 월드를 비출 기본 조명을 설정합니다.
 	BuildDefaultLightsAndMaterials();
 
-	// 4. Mesh.h/.cpp에 새로 통합한 CHeightMapTerrain 클래스를 이용해 지형을 생성합니다.
 	m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, _T("../Assets/Image/Terrain/HeightMap.raw"), 257, 257, 17, 17, XMFLOAT3(8.0f, 2.0f, 8.0f));
-	m_pTestCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 20.0f, 20.0f, 20.0f);
+	//m_pTestCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 20.0f, 20.0f, 20.0f);
 
-	// 5. 조명 정보를 셰이더로 넘기기 위한 상수 버퍼를 생성합니다.
+	m_nEnemyTanks = 5; // 5대의 적 탱크를 생성
+	m_ppEnemyTanks = new CEnemyTank * [m_nEnemyTanks];
+	for (int i = 0; i < m_nEnemyTanks; i++)
+	{
+		m_ppEnemyTanks[i] = new CEnemyTank(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
+	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
@@ -92,9 +93,17 @@ void CScene::ReleaseObjects()
 {
 	if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
 	if (m_pTerrain) m_pTerrain->Release();
-	if (m_pLights) delete[] m_pLights;
+	delete[] m_pLights;
 
-	if (m_pTestCubeMesh) m_pTestCubeMesh->Release(); // <-- 이 줄 추가
+	if (m_ppEnemyTanks)
+	{
+		for (int i = 0; i < m_nEnemyTanks; i++)
+		{
+			if (m_ppEnemyTanks[i]) delete m_ppEnemyTanks[i];
+		}
+		delete[] m_ppEnemyTanks;
+	}
+	//if (m_pTestCubeMesh) m_pTestCubeMesh->Release(); // <-- 이 줄 추가
 	ReleaseShaderVariables();
 }
 
@@ -182,6 +191,10 @@ void CScene::AnimateObjects(float fTimeElapsed)
 		m_pLights[1].m_xmf3Position = m_pPlayer->GetPosition();
 		m_pLights[1].m_xmf3Direction = m_pPlayer->GetLookVector();
 	}
+	for (int i = 0; i < m_nEnemyTanks; i++)
+	{
+		m_ppEnemyTanks[i]->Animate(fTimeElapsed);
+	}
 }
 
 void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera)
@@ -198,34 +211,38 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 
 	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
 
-	if (m_pTestCubeMesh)
+	for (int i = 0; i < m_nEnemyTanks; i++)
 	{
-		// 임시 재질을 만들고 조명 셰이더를 설정합니다.
-		CMaterial tempMaterial;
-		tempMaterial.SetIlluminatedShader();
-		MATERIALLOADINFO matInfo; // 기본 흰색 재질 정보
-		CMaterialColors* colors = new CMaterialColors(&matInfo);
-		tempMaterial.SetMaterialColors(colors);
-
-		// 파이프라인 상태(PSO)를 설정합니다.
-		tempMaterial.m_pShader->OnPrepareRender(pd3dCommandList);
-
-		// 큐브의 위치를 카메라 앞 100 유닛으로 설정하는 월드 행렬을 만듭니다.
-		XMFLOAT4X4 mtxWorld = Matrix4x4::Identity();
-		XMFLOAT3 look = pCamera->GetLookVector();
-		XMFLOAT3 pos = pCamera->GetPosition();
-		mtxWorld._41 = pos.x + look.x * 100.0f;
-		mtxWorld._42 = pos.y + look.y * 100.0f;
-		mtxWorld._43 = pos.z + look.z * 100.0f;
-
-		// 월드 행렬과 재질 정보를 셰이더로 넘깁니다.
-		CGameObject tempObject;
-		tempObject.UpdateShaderVariable(pd3dCommandList, &mtxWorld);
-		tempMaterial.UpdateShaderVariable(pd3dCommandList);
-
-		// 큐브 메쉬를 렌더링합니다.
-		m_pTestCubeMesh->Render(pd3dCommandList);
+		m_ppEnemyTanks[i]->Render(pd3dCommandList, pCamera);
 	}
+	//if (m_pTestCubeMesh)
+	//{
+	//	// 임시 재질을 만들고 조명 셰이더를 설정합니다.
+	//	CMaterial tempMaterial;
+	//	tempMaterial.SetIlluminatedShader();
+	//	MATERIALLOADINFO matInfo; // 기본 흰색 재질 정보
+	//	CMaterialColors* colors = new CMaterialColors(&matInfo);
+	//	tempMaterial.SetMaterialColors(colors);
+
+	//	// 파이프라인 상태(PSO)를 설정합니다.
+	//	tempMaterial.m_pShader->OnPrepareRender(pd3dCommandList);
+
+	//	// 큐브의 위치를 카메라 앞 100 유닛으로 설정하는 월드 행렬을 만듭니다.
+	//	XMFLOAT4X4 mtxWorld = Matrix4x4::Identity();
+	//	XMFLOAT3 look = pCamera->GetLookVector();
+	//	XMFLOAT3 pos = pCamera->GetPosition();
+	//	mtxWorld._41 = pos.x + look.x * 100.0f;
+	//	mtxWorld._42 = pos.y + look.y * 100.0f;
+	//	mtxWorld._43 = pos.z + look.z * 100.0f;
+
+	//	// 월드 행렬과 재질 정보를 셰이더로 넘깁니다.
+	//	CGameObject tempObject;
+	//	tempObject.UpdateShaderVariable(pd3dCommandList, &mtxWorld);
+	//	tempMaterial.UpdateShaderVariable(pd3dCommandList);
+
+	//	// 큐브 메쉬를 렌더링합니다.
+	//	m_pTestCubeMesh->Render(pd3dCommandList);
+	//}
 }
 
 bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam) { return(false); }

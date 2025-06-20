@@ -29,6 +29,9 @@ protected:
 
 	CCamera* m_pCamera = NULL;
 
+	XMFLOAT4					m_xmf4Quaternion; // 현재 회전 상태를 저장할 쿼터니언
+	float						m_fRotationSpeed; // 회전 보간 속도 
+
 public:
 	CPlayer(int nMeshes = 1);
 	virtual ~CPlayer();
@@ -52,6 +55,7 @@ public:
 	void Move(const XMFLOAT3& xmf3Shift, bool bVelocity = false);
 	void Rotate(float x, float y, float z);
 
+	void OnPrepareRender() override;
 	virtual void Update(float fTimeElapsed);
 
 	virtual void OnPlayerUpdateCallback(float fTimeElapsed) {}
@@ -64,7 +68,6 @@ public:
 	virtual CCamera* ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed) { return(NULL); }
 
 	void CPlayer::CreateShaderVariables(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList) override;
-	
 };
 
 // 지형 위를 움직이는 로직을 담당하는 플레이어 클래스
@@ -85,4 +88,8 @@ class CTankPlayer : public CTerrainPlayer
 public:
 	CTankPlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, void *pContext);
 	virtual ~CTankPlayer();
+	void RotateTurret(float fYaw);
+protected:
+	// 포탑과 포신 객체를 직접 가리키기 위한 포인터입니다.
+	CGameObject* m_pTurret = NULL;
 };

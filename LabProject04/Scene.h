@@ -6,6 +6,7 @@
 #include "Player.h"
 
 // CHeightMapTerrain 클래스가 Mesh.h에 있으므로 포함합니다.
+#include "Enemy.h"
 #include "Mesh.h" 
 
 #define MAX_LIGHTS			16 
@@ -82,5 +83,9 @@ protected:
 	LIGHTS						*m_pcbMappedLights = NULL;
 
 	float						m_fElapsedTime = 0.0f;
-	CMesh*						m_pTestCubeMesh = nullptr;
+
+	int							m_nEnemyTanks = 0;
+	CEnemyTank**				m_ppEnemyTanks = NULL;
+
+	//CMesh*						m_pTestCubeMesh = nullptr;
 };

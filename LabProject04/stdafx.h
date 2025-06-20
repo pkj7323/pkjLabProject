@@ -17,6 +17,7 @@
 #include <shellapi.h>
 #include <fstream>
 #include <vector>
+#include <sstream>
 
 using namespace std;
 
@@ -53,6 +54,17 @@ inline bool IsZero(float fValue) { return((fabsf(fValue) < EPSILON)); }
 
 namespace Vector3
 {
+	inline XMFLOAT3 Lerp(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2, float t)
+	{
+		XMVECTOR xmvVector1 = XMLoadFloat3(&xmf3Vector1);
+		XMVECTOR xmvVector2 = XMLoadFloat3(&xmf3Vector2);
+		XMVECTOR xmvResult = XMVectorLerp(xmvVector1, xmvVector2, t);
+
+		XMFLOAT3 xmf3Result;
+		XMStoreFloat3(&xmf3Result, xmvResult);
+		return(xmf3Result);
+	}
+
 	inline XMFLOAT3 XMVectorToFloat3(XMVECTOR& xmvVector)
 	{
 		XMFLOAT3 xmf3Result;
@@ -60,7 +72,7 @@ namespace Vector3
 		return(xmf3Result);
 	}
 
-	inline XMFLOAT3 ScalarProduct(XMFLOAT3& xmf3Vector, float fScalar, bool bNormalize = true)
+	inline XMFLOAT3& ScalarProduct(const XMFLOAT3& xmf3Vector, float fScalar, bool bNormalize = true)
 	{
 		XMFLOAT3 xmf3Result;
 		if (bNormalize)
@@ -89,14 +101,14 @@ namespace Vector3
 		return(xmf3Result);
 	}
 
-	inline float DotProduct(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
+	inline float DotProduct(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
 	{
 		XMFLOAT3 xmf3Result;
 		XMStoreFloat3(&xmf3Result, XMVector3Dot(XMLoadFloat3(&xmf3Vector1), XMLoadFloat3(&xmf3Vector2)));
 		return(xmf3Result.x);
 	}
 
-	inline XMFLOAT3 CrossProduct(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2, bool bNormalize = true)
+	inline XMFLOAT3 CrossProduct(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2, bool bNormalize = true)
 	{
 		XMFLOAT3 xmf3Result;
 		if (bNormalize)
@@ -126,7 +138,7 @@ namespace Vector3
 		return(XMConvertToDegrees(acosf(XMVectorGetX(xmvAngle))));
 	}
 
-	inline XMFLOAT3 TransformNormal(XMFLOAT3& xmf3Vector, XMMATRIX& xmmtxTransform)
+	inline XMFLOAT3 TransformNormal(const XMFLOAT3& xmf3Vector, const XMMATRIX& xmmtxTransform)
 	{
 		XMFLOAT3 xmf3Result;
 		XMStoreFloat3(&xmf3Result, XMVector3TransformNormal(XMLoadFloat3(&xmf3Vector), xmmtxTransform));
@@ -144,7 +156,15 @@ namespace Vector3
 		return(TransformCoord(xmf3Vector, XMLoadFloat4x4(&xmmtx4x4Matrix)));
 	}
 }
-
+namespace Vector4
+{
+	inline XMFLOAT4 Multiply(const XMFLOAT4& vec4, float scalar)
+	{
+		XMFLOAT4 result;
+		XMStoreFloat4(&result, XMLoadFloat4(&vec4) * scalar);
+		return result;
+	}
+}
 namespace Matrix4x4
 {
 	inline XMFLOAT4X4 Identity()

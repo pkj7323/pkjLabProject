@@ -132,7 +132,7 @@ public:
 
 	virtual void ReleaseUploadBuffers();
 
-	XMFLOAT3 GetPosition();
+	virtual XMFLOAT3 GetPosition();
 	XMFLOAT3 GetLook();
 	XMFLOAT3 GetUp();
 	XMFLOAT3 GetRight();
@@ -141,12 +141,12 @@ public:
 	void SetPosition(XMFLOAT3 xmf3Position);
 	void SetScale(float x, float y, float z);
 
-	void Move(const XMFLOAT3& xmf3Shift, bool bVelocity = false);
+	virtual void Move(const XMFLOAT3& xmf3Shift, bool bVelocity = false);
 	void MoveStrafe(float fDistance = 1.0f);
 	void MoveUp(float fDistance = 1.0f);
 	void MoveForward(float fDistance = 1.0f);
 
-	void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 1.0f);
+	virtual void Rotate(float fPitch = 10.0f, float fYaw = 10.0f, float fRoll = 1.0f);
 	void Rotate(XMFLOAT3 *pxmf3Axis, float fAngle);
 	void Rotate(XMFLOAT4 *pxmf4Quaternion);
 
@@ -157,9 +157,10 @@ public:
 	UINT GetMeshType();
 
 public:
-	static MATERIALSLOADINFO *LoadMaterialsInfoFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, FILE *pInFile);
-	static CMeshLoadInfo *LoadMeshInfoFromFile(FILE *pInFile);
-	static CGameObject *LoadFrameHierarchyFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, FILE *pInFile);
+	static MATERIALSLOADINFO *LoadMaterialsInfoFromFile(std::ifstream& file);
+	static CMeshLoadInfo *LoadMeshInfoFromFile(std::ifstream& file);
+	static CGameObject *LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, std
+	                                               ::ifstream& file);
 	static CGameObject *LoadGeometryFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, const
 	                                         char* pstrFileName);
 };

@@ -381,8 +381,8 @@ void CGameFramework::ProcessInput()
 	{
 		if (pKeyBuffer[VK_UP] & 0xF0) dwDirection |= DIR_FORWARD;
 		if (pKeyBuffer[VK_DOWN] & 0xF0) dwDirection |= DIR_BACKWARD;
-		if (pKeyBuffer[VK_LEFT] & 0xF0) dwDirection |= DIR_LEFT;
-		if (pKeyBuffer[VK_RIGHT] & 0xF0) dwDirection |= DIR_RIGHT;
+		if (pKeyBuffer[VK_LEFT] & 0xF0) dwDirection |= DIR_LEFT;   // 탱크 좌회전
+		if (pKeyBuffer[VK_RIGHT] & 0xF0) dwDirection |= DIR_RIGHT; // 탱크 우회전
 		if (pKeyBuffer[VK_PRIOR] & 0xF0) dwDirection |= DIR_UP;
 		if (pKeyBuffer[VK_NEXT] & 0xF0) dwDirection |= DIR_DOWN;
 	}
@@ -399,16 +399,38 @@ void CGameFramework::ProcessInput()
 		::SetCursorPos(m_ptOldCursorPos.x, m_ptOldCursorPos.y);
 	}
 
+	// 이동 또는 회전 입력이 있을 때만 처리
 	if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f))
 	{
+		// 마우스 움직임(cxDelta, cyDelta)은 이제 카메라만 회전시킵니다.
 		if (cxDelta || cyDelta)
 		{
-			if (pKeyBuffer[VK_RBUTTON] & 0xF0)
-				m_pPlayer->Rotate(cyDelta, 0.0f, -cxDelta);
-			else
-				m_pPlayer->Rotate(cyDelta, cxDelta, 0.0f);
+			if (m_pCamera) m_pCamera->Rotate(cyDelta, cxDelta, 0.0f);
+			if (m_pPlayer) ((CTankPlayer*)m_pPlayer)->RotateTurret(cxDelta);
 		}
-		if (dwDirection) m_pPlayer->Move(dwDirection, 50.0f * m_GameTimer.GetTimeElapsed(), true);
+
+		// 키보드 입력은 플레이어를 움직이거나 회전시킵니다.
+		if (dwDirection)
+		{
+			// 좌/우 키는 탱크 몸체를 회전시킵니다.
+			float fBodyYaw = 0.0f;
+			if (dwDirection & DIR_RIGHT) fBodyYaw = +120.0f * m_GameTimer.GetTimeElapsed();
+			if (dwDirection & DIR_LEFT)  fBodyYaw = -120.0f * m_GameTimer.GetTimeElapsed();
+
+			if (fBodyYaw != 0.0f)
+			{
+				m_pPlayer->Rotate(0.0f, fBodyYaw, 0.0f);
+				//if (m_pCamera)
+				//{
+				//	// 카메라도 몸체와 같은 양만큼만 Yaw 회전
+				//	m_pCamera->Rotate(0.0f, fBodyYaw, 0.0f);
+				//}
+			}
+
+			// 앞/뒤 키는 탱크를 해당 방향으로 움직입니다.
+			if (dwDirection & DIR_FORWARD) m_pPlayer->Move(dwDirection, 50.0f * m_GameTimer.GetTimeElapsed(), true);
+			if (dwDirection & DIR_BACKWARD) m_pPlayer->Move(dwDirection, 50.0f * m_GameTimer.GetTimeElapsed(), true);
+		}
 	}
 
 	m_pPlayer->Update(m_GameTimer.GetTimeElapsed());

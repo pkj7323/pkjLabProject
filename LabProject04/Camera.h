@@ -20,7 +20,7 @@ struct VS_CB_CAMERA_INFO
 
 class CCamera
 {
-protected:
+public:
 	XMFLOAT3						m_xmf3Position;
 	XMFLOAT3						m_xmf3Right;
 	XMFLOAT3						m_xmf3Up;
@@ -121,4 +121,5 @@ public:
 	virtual ~CThirdPersonCamera() {}
 	virtual void Update(XMFLOAT3& xmf3LookAt, float fTimeElapsed);
 	virtual void SetLookAt(const XMFLOAT3& vLookAt);
+	void Rotate(float fPitch, float fYaw, float fRoll) override;
 };
