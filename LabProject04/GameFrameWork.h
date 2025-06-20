@@ -114,9 +114,7 @@ private:
 	// 씬을 위한 멤버변수
 
 
-	ID3D12RootSignature* m_pd3dSimpleRootSignature = NULL;
-	ID3D12PipelineState* m_pd3dSimplePipelineState = NULL;
-	CMesh* m_pTestTriangle = NULL;
+	//CMesh* m_pTestTriangle = NULL; //테스트용		
 
 
 };

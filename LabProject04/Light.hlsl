@@ -37,7 +37,7 @@ cbuffer cbLights : register(b4)
 float4 Lighting(float3 vPosition, float3 vNormal)
 {
     float3 vToCamera = normalize(gvCameraPosition - vPosition);
-    float4 cColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 cColor = float4(1.0f, 1.0f, 1.0f, 1.0f);
 
 	// 모든 조명을 순회하며 색상을 더함
 	[unroll(MAX_LIGHTS)] 

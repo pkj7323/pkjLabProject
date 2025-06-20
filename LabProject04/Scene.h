@@ -47,7 +47,7 @@ public:
 	bool OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 	bool OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam);
 
-	// 이 함수 선언이 누락되었습니다. 여기에 추가합니다.
+	
 	void BuildDefaultLightsAndMaterials();
 	void BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
 	void ReleaseObjects();
@@ -66,7 +66,8 @@ public:
 
 	void SetPlayer(CPlayer *pPlayer) { m_pPlayer = pPlayer; }
 	CHeightMapTerrain *GetTerrain() { return(m_pTerrain); }
-
+	// Scene.h 의 CScene 클래스 public 영역에 추가
+	D3D12_GPU_VIRTUAL_ADDRESS GetLightsGpuVirtualAddress() { return(m_pd3dcbLights->GetGPUVirtualAddress()); }
 protected:
 	ID3D12RootSignature			*m_pd3dGraphicsRootSignature = NULL;
 
@@ -81,4 +82,5 @@ protected:
 	LIGHTS						*m_pcbMappedLights = NULL;
 
 	float						m_fElapsedTime = 0.0f;
+	CMesh*						m_pTestCubeMesh = nullptr;
 };

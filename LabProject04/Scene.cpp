@@ -33,6 +33,7 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 
 	// 4. Mesh.h/.cpp에 새로 통합한 CHeightMapTerrain 클래스를 이용해 지형을 생성합니다.
 	m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, _T("../Assets/Image/Terrain/HeightMap.raw"), 257, 257, 17, 17, XMFLOAT3(8.0f, 2.0f, 8.0f));
+	m_pTestCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 20.0f, 20.0f, 20.0f);
 
 	// 5. 조명 정보를 셰이더로 넘기기 위한 상수 버퍼를 생성합니다.
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
@@ -40,33 +41,51 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 
 void CScene::BuildDefaultLightsAndMaterials()
 {
-	m_nLights = 2;
+	m_nLights = 4;
 	m_pLights = new LIGHT[m_nLights];
 	::ZeroMemory(m_pLights, sizeof(LIGHT) * m_nLights);
 
-	m_xmf4GlobalAmbient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	m_xmf4GlobalAmbient = XMFLOAT4(0.15f, 0.15f, 0.15f, 1.0f);
 
-	// 태양과 같은 주 방향성 조명 (Directional Light)
 	m_pLights[0].m_bEnable = true;
-	m_pLights[0].m_nType = DIRECTIONAL_LIGHT;
-	m_pLights[0].m_xmf4Ambient = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
-	m_pLights[0].m_xmf4Diffuse = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
-	m_pLights[0].m_xmf4Specular = XMFLOAT4(0.4f, 0.4f, 0.4f, 0.0f);
-	m_pLights[0].m_xmf3Direction = XMFLOAT3(0.5f, -0.7f, 0.5f);
-
-	// 플레이어를 따라다니는 스포트라이트 (Spot Light)
+	m_pLights[0].m_nType = POINT_LIGHT;
+	m_pLights[0].m_fRange = 1000.0f;
+	m_pLights[0].m_xmf4Ambient = XMFLOAT4(0.1f, 0.0f, 0.0f, 1.0f);
+	m_pLights[0].m_xmf4Diffuse = XMFLOAT4(0.8f, 0.0f, 0.0f, 1.0f);
+	m_pLights[0].m_xmf4Specular = XMFLOAT4(0.5f, 0.5f, 0.5f, 0.0f);
+	m_pLights[0].m_xmf3Position = XMFLOAT3(30.0f, 30.0f, 30.0f);
+	m_pLights[0].m_xmf3Direction = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	m_pLights[0].m_xmf3Attenuation = XMFLOAT3(1.0f, 0.001f, 0.0001f);
 	m_pLights[1].m_bEnable = true;
 	m_pLights[1].m_nType = SPOT_LIGHT;
 	m_pLights[1].m_fRange = 500.0f;
 	m_pLights[1].m_xmf4Ambient = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
-	m_pLights[1].m_xmf4Diffuse = XMFLOAT4(0.8f, 0.8f, 0.4f, 1.0f);
-	m_pLights[1].m_xmf4Specular = XMFLOAT4(0.5f, 0.5f, 0.2f, 0.0f);
-	m_pLights[1].m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); // 플레이어 위치로 계속 갱신될 예정
-	m_pLights[1].m_xmf3Direction = XMFLOAT3(0.0f, 0.0f, 1.0f); // 플레이어 방향으로 계속 갱신될 예정
-	m_pLights[1].m_xmf3Attenuation = XMFLOAT3(1.0f, 0.005f, 0.0001f);
+	m_pLights[1].m_xmf4Diffuse = XMFLOAT4(0.4f, 0.4f, 0.4f, 1.0f);
+	m_pLights[1].m_xmf4Specular = XMFLOAT4(0.3f, 0.3f, 0.3f, 0.0f);
+	m_pLights[1].m_xmf3Position = XMFLOAT3(-50.0f, 20.0f, -5.0f);
+	m_pLights[1].m_xmf3Direction = XMFLOAT3(0.0f, 0.0f, 1.0f);
+	m_pLights[1].m_xmf3Attenuation = XMFLOAT3(1.0f, 0.01f, 0.0001f);
 	m_pLights[1].m_fFalloff = 8.0f;
 	m_pLights[1].m_fPhi = (float)cos(XMConvertToRadians(40.0f));
 	m_pLights[1].m_fTheta = (float)cos(XMConvertToRadians(20.0f));
+	m_pLights[2].m_bEnable = true;
+	m_pLights[2].m_nType = DIRECTIONAL_LIGHT;
+	m_pLights[2].m_xmf4Ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	m_pLights[2].m_xmf4Diffuse = XMFLOAT4(0.8f, 0.8f, 0.8f, 1.0f);
+	m_pLights[2].m_xmf4Specular = XMFLOAT4(0.4f, 0.4f, 0.4f, 0.0f);
+	m_pLights[2].m_xmf3Direction = XMFLOAT3(1.0f, 0.0f, 0.0f);
+	m_pLights[3].m_bEnable = true;
+	m_pLights[3].m_nType = SPOT_LIGHT;
+	m_pLights[3].m_fRange = 600.0f;
+	m_pLights[3].m_xmf4Ambient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	m_pLights[3].m_xmf4Diffuse = XMFLOAT4(0.3f, 0.7f, 0.0f, 1.0f);
+	m_pLights[3].m_xmf4Specular = XMFLOAT4(0.3f, 0.3f, 0.3f, 0.0f);
+	m_pLights[3].m_xmf3Position = XMFLOAT3(50.0f, 30.0f, 30.0f);
+	m_pLights[3].m_xmf3Direction = XMFLOAT3(0.0f, 1.0f, 1.0f);
+	m_pLights[3].m_xmf3Attenuation = XMFLOAT3(1.0f, 0.01f, 0.0001f);
+	m_pLights[3].m_fFalloff = 8.0f;
+	m_pLights[3].m_fPhi = (float)cos(XMConvertToRadians(90.0f));
+	m_pLights[3].m_fTheta = (float)cos(XMConvertToRadians(30.0f));
 }
 
 void CScene::ReleaseObjects()
@@ -75,6 +94,7 @@ void CScene::ReleaseObjects()
 	if (m_pTerrain) m_pTerrain->Release();
 	if (m_pLights) delete[] m_pLights;
 
+	if (m_pTestCubeMesh) m_pTestCubeMesh->Release(); // <-- 이 줄 추가
 	ReleaseShaderVariables();
 }
 
@@ -177,6 +197,35 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 	pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); // Lights (register b4)
 
 	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
+
+	if (m_pTestCubeMesh)
+	{
+		// 임시 재질을 만들고 조명 셰이더를 설정합니다.
+		CMaterial tempMaterial;
+		tempMaterial.SetIlluminatedShader();
+		MATERIALLOADINFO matInfo; // 기본 흰색 재질 정보
+		CMaterialColors* colors = new CMaterialColors(&matInfo);
+		tempMaterial.SetMaterialColors(colors);
+
+		// 파이프라인 상태(PSO)를 설정합니다.
+		tempMaterial.m_pShader->OnPrepareRender(pd3dCommandList);
+
+		// 큐브의 위치를 카메라 앞 100 유닛으로 설정하는 월드 행렬을 만듭니다.
+		XMFLOAT4X4 mtxWorld = Matrix4x4::Identity();
+		XMFLOAT3 look = pCamera->GetLookVector();
+		XMFLOAT3 pos = pCamera->GetPosition();
+		mtxWorld._41 = pos.x + look.x * 100.0f;
+		mtxWorld._42 = pos.y + look.y * 100.0f;
+		mtxWorld._43 = pos.z + look.z * 100.0f;
+
+		// 월드 행렬과 재질 정보를 셰이더로 넘깁니다.
+		CGameObject tempObject;
+		tempObject.UpdateShaderVariable(pd3dCommandList, &mtxWorld);
+		tempMaterial.UpdateShaderVariable(pd3dCommandList);
+
+		// 큐브 메쉬를 렌더링합니다.
+		m_pTestCubeMesh->Render(pd3dCommandList);
+	}
 }
 
 bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam) { return(false); }

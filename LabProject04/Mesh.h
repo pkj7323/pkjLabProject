@@ -131,7 +131,6 @@ public:
 	int GetHeightMapLength() { return(m_nLength); }
 };
 
-// **수정점 2: 지형 생성을 전담하는 새로운 클래스입니다.**
 class CHeightMapGridMesh : public CMesh
 {
 public:
@@ -155,6 +154,7 @@ public:
 	float GetWidth() { return(m_nWidth * m_xmf3Scale.x); }
 	float GetLength() { return(m_nLength * m_xmf3Scale.z); }
 };
+
 class CCubeMeshDiffused : public CMesh
 {
 public:

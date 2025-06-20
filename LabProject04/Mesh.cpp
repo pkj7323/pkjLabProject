@@ -52,7 +52,18 @@ void CMesh::Render(ID3D12GraphicsCommandList* pd3dCommandList)
 
 void CMesh::Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet)
 {
-	// 이 함수는 CMeshFromFile 에서 재정의하여 사용합니다.
+	// 기본 메쉬는 서브셋 개념이 없으므로, 전체 메쉬를 렌더링
+	pd3dCommandList->IASetPrimitiveTopology(m_d3dPrimitiveTopology);
+	pd3dCommandList->IASetVertexBuffers(m_nSlot, 1, &m_d3dVertexBufferView);
+	if (m_pd3dIndexBuffer)
+	{
+		pd3dCommandList->IASetIndexBuffer(&m_d3dIndexBufferView);
+		pd3dCommandList->DrawIndexedInstanced(m_nIndices, 1, 0, 0, 0);
+	}
+	else
+	{
+		pd3dCommandList->DrawInstanced(m_nVertices, 1, m_nOffset, 0);
+	}
 }
 
 
@@ -251,10 +262,33 @@ CHeightMapImage::CHeightMapImage(LPCTSTR pFileName, int nWidth, int nLength, XMF
 	m_xmf3Scale = xmf3Scale;
 	m_pHeightMapPixels = new BYTE[m_nWidth * m_nLength];
 
+	// --- 수정된 부분: 파일 열기 및 읽기 오류 확인 ---
 	HANDLE hFile = ::CreateFile(pFileName, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		// 파일을 열지 못했다면, 디버그 창에 메시지를 출력합니다.
+		TCHAR pstrDebug[256] = { 0 };
+		_stprintf_s(pstrDebug, 256, _T("오류: 높이 맵 파일을 찾을 수 없습니다: %s\n"), pFileName);
+		OutputDebugString(pstrDebug);
+		// 메쉬가 이상하게 그려지는 것을 막기 위해 모든 높이를 0으로 설정합니다.
+		memset(m_pHeightMapPixels, 0, sizeof(BYTE) * m_nWidth * m_nLength);
+		return;
+	}
+
 	DWORD dwBytesRead;
 	::ReadFile(hFile, m_pHeightMapPixels, (m_nWidth * m_nLength), &dwBytesRead, NULL);
 	::CloseHandle(hFile);
+
+	// 파일에서 읽은 데이터가 예상보다 적은 경우
+	if (dwBytesRead < (DWORD)(m_nWidth * m_nLength))
+	{
+		TCHAR pstrDebug[256] = { 0 };
+		_stprintf_s(pstrDebug, 256, _T("경고: 높이 맵 파일의 크기가 예상보다 작습니다.\n"));
+		OutputDebugString(pstrDebug);
+		// 남은 부분을 0으로 채웁니다.
+		memset(m_pHeightMapPixels + dwBytesRead, 0, sizeof(BYTE) * ((m_nWidth * m_nLength) - dwBytesRead));
+	}
+	// --- 여기까지 ---
 }
 
 CHeightMapImage::~CHeightMapImage()
@@ -318,12 +352,15 @@ CHeightMapTerrain::CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 
 	CMaterial* pMaterial = new CMaterial();
 	MATERIALLOADINFO materialInfo;
-	materialInfo.m_xmf4AlbedoColor = XMFLOAT4(0.4f, 0.6f, 0.2f, 1.0f);
-	materialInfo.m_xmf4SpecularColor = XMFLOAT4(0.1f, 0.1f, 0.1f, 2.0f);
+	// 더 밝은 색상으로 설정
+	materialInfo.m_xmf4EmissiveColor = XMFLOAT4(0.1,0.1,0.1, 1.0f); // 기존 0.8 → 1.5
+	materialInfo.m_xmf4AlbedoColor = XMFLOAT4(0.8,0.4,0.3, 1.0f);   // 기존 1.0 → 1.5
+	materialInfo.m_xmf4SpecularColor = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f); // specular도 약간 증가
 	pMaterial->SetMaterialColors(new CMaterialColors(&materialInfo));
 	pMaterial->SetIlluminatedShader();
 	SetMaterial(0, pMaterial);
 }
+
 
 CHeightMapTerrain::~CHeightMapTerrain()
 {
@@ -337,71 +374,46 @@ CHeightMapTerrain::~CHeightMapTerrain()
 
 CCubeMeshDiffused::CCubeMeshDiffused(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, float fWidth, float fHeight, float fDepth) : CMesh()
 {
-	// 조명을 위해 각 면이 고유한 법선 벡터를 갖도록 24개의 정점으로 큐브를 정의합니다.
-	m_nVertices = 24;
-	m_nStride = sizeof(CIlluminatedVertex); // 위치와 법선을 갖는 정점 구조체
+	// 8개의 정점만 사용하는 큐브
+	m_nVertices = 8;
+	m_nStride = sizeof(CIlluminatedVertex);
 	m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 	float fx = fWidth * 0.5f, fy = fHeight * 0.5f, fz = fDepth * 0.5f;
 
-	CIlluminatedVertex pVertices[24];
-
-	// 앞면 (Normal: 0,0,-1)
-	pVertices[0] = CIlluminatedVertex(XMFLOAT3(-fx, +fy, -fz), XMFLOAT3(0.0f, 0.0f, -1.0f));
-	pVertices[1] = CIlluminatedVertex(XMFLOAT3(+fx, +fy, -fz), XMFLOAT3(0.0f, 0.0f, -1.0f));
-	pVertices[2] = CIlluminatedVertex(XMFLOAT3(-fx, -fy, -fz), XMFLOAT3(0.0f, 0.0f, -1.0f));
-	pVertices[3] = CIlluminatedVertex(XMFLOAT3(+fx, -fy, -fz), XMFLOAT3(0.0f, 0.0f, -1.0f));
-	// 뒷면 (Normal: 0,0,1)
-	pVertices[4] = CIlluminatedVertex(XMFLOAT3(-fx, +fy, +fz), XMFLOAT3(0.0f, 0.0f, +1.0f));
-	pVertices[5] = CIlluminatedVertex(XMFLOAT3(+fx, +fy, +fz), XMFLOAT3(0.0f, 0.0f, +1.0f));
-	pVertices[6] = CIlluminatedVertex(XMFLOAT3(-fx, -fy, +fz), XMFLOAT3(0.0f, 0.0f, +1.0f));
-	pVertices[7] = CIlluminatedVertex(XMFLOAT3(+fx, -fy, +fz), XMFLOAT3(0.0f, 0.0f, +1.0f));
-	// 윗면 (Normal: 0,1,0)
-	pVertices[8] = CIlluminatedVertex(XMFLOAT3(-fx, +fy, +fz), XMFLOAT3(0.0f, +1.0f, 0.0f));
-	pVertices[9] = CIlluminatedVertex(XMFLOAT3(+fx, +fy, +fz), XMFLOAT3(0.0f, +1.0f, 0.0f));
-	pVertices[10] = CIlluminatedVertex(XMFLOAT3(-fx, +fy, -fz), XMFLOAT3(0.0f, +1.0f, 0.0f));
-	pVertices[11] = CIlluminatedVertex(XMFLOAT3(+fx, +fy, -fz), XMFLOAT3(0.0f, +1.0f, 0.0f));
-	// 아랫면 (Normal: 0,-1,0)
-	pVertices[12] = CIlluminatedVertex(XMFLOAT3(-fx, -fy, -fz), XMFLOAT3(0.0f, -1.0f, 0.0f));
-	pVertices[13] = CIlluminatedVertex(XMFLOAT3(+fx, -fy, -fz), XMFLOAT3(0.0f, -1.0f, 0.0f));
-	pVertices[14] = CIlluminatedVertex(XMFLOAT3(-fx, -fy, +fz), XMFLOAT3(0.0f, -1.0f, 0.0f));
-	pVertices[15] = CIlluminatedVertex(XMFLOAT3(+fx, -fy, +fz), XMFLOAT3(0.0f, -1.0f, 0.0f));
-	// 왼쪽면 (Normal: -1,0,0)
-	pVertices[16] = CIlluminatedVertex(XMFLOAT3(-fx, +fy, +fz), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	pVertices[17] = CIlluminatedVertex(XMFLOAT3(-fx, +fy, -fz), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	pVertices[18] = CIlluminatedVertex(XMFLOAT3(-fx, -fy, +fz), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	pVertices[19] = CIlluminatedVertex(XMFLOAT3(-fx, -fy, -fz), XMFLOAT3(-1.0f, 0.0f, 0.0f));
-	// 오른쪽면 (Normal: 1,0,0)
-	pVertices[20] = CIlluminatedVertex(XMFLOAT3(+fx, +fy, -fz), XMFLOAT3(+1.0f, 0.0f, 0.0f));
-	pVertices[21] = CIlluminatedVertex(XMFLOAT3(+fx, +fy, +fz), XMFLOAT3(+1.0f, 0.0f, 0.0f));
-	pVertices[22] = CIlluminatedVertex(XMFLOAT3(+fx, -fy, -fz), XMFLOAT3(+1.0f, 0.0f, 0.0f));
-	pVertices[23] = CIlluminatedVertex(XMFLOAT3(+fx, -fy, +fz), XMFLOAT3(+1.0f, 0.0f, 0.0f));
+	// 8개 꼭짓점 정의 (법선은 임시로 0,0,0, 실제 조명 계산시 보간됨)
+	CIlluminatedVertex pVertices[8] = {
+		CIlluminatedVertex(XMFLOAT3(-fx, +fy, -fz), XMFLOAT3(0,0,0)), // 0: 좌상앞
+		CIlluminatedVertex(XMFLOAT3(+fx, +fy, -fz), XMFLOAT3(0,0,0)), // 1: 우상앞
+		CIlluminatedVertex(XMFLOAT3(-fx, -fy, -fz), XMFLOAT3(0,0,0)), // 2: 좌하앞
+		CIlluminatedVertex(XMFLOAT3(+fx, -fy, -fz), XMFLOAT3(0,0,0)), // 3: 우하앞
+		CIlluminatedVertex(XMFLOAT3(-fx, +fy, +fz), XMFLOAT3(0,0,0)), // 4: 좌상뒤
+		CIlluminatedVertex(XMFLOAT3(+fx, +fy, +fz), XMFLOAT3(0,0,0)), // 5: 우상뒤
+		CIlluminatedVertex(XMFLOAT3(-fx, -fy, +fz), XMFLOAT3(0,0,0)), // 6: 좌하뒤
+		CIlluminatedVertex(XMFLOAT3(+fx, -fy, +fz), XMFLOAT3(0,0,0)), // 7: 우하뒤
+	};
 
 	m_pd3dVertexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, pVertices, m_nStride * m_nVertices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, &m_pd3dVertexUploadBuffer);
 	m_d3dVertexBufferView.BufferLocation = m_pd3dVertexBuffer->GetGPUVirtualAddress();
 	m_d3dVertexBufferView.StrideInBytes = m_nStride;
 	m_d3dVertexBufferView.SizeInBytes = m_nStride * m_nVertices;
 
+	// 인덱스(시계방향, CW)
 	m_nIndices = 36;
-	UINT pnIndices[36];
-	// 앞면
-	pnIndices[0] = 0; pnIndices[1] = 1; pnIndices[2] = 2;
-	pnIndices[3] = 2; pnIndices[4] = 1; pnIndices[5] = 3;
-	// 뒷면
-	pnIndices[6] = 4; pnIndices[7] = 6; pnIndices[8] = 5;
-	pnIndices[9] = 5; pnIndices[10] = 6; pnIndices[11] = 7;
-	// 윗면
-	pnIndices[12] = 8; pnIndices[13] = 9; pnIndices[14] = 10;
-	pnIndices[15] = 10; pnIndices[16] = 9; pnIndices[17] = 11;
-	// 아랫면
-	pnIndices[18] = 12; pnIndices[19] = 14; pnIndices[20] = 13;
-	pnIndices[21] = 13; pnIndices[22] = 14; pnIndices[23] = 15;
-	// 왼쪽면
-	pnIndices[24] = 16; pnIndices[25] = 17; pnIndices[26] = 18;
-	pnIndices[27] = 18; pnIndices[28] = 17; pnIndices[29] = 19;
-	// 오른쪽면
-	pnIndices[30] = 20; pnIndices[31] = 23; pnIndices[32] = 21;
-	pnIndices[33] = 20; pnIndices[34] = 22; pnIndices[35] = 23;
+	UINT pnIndices[36] = {
+		// 앞면
+		0, 2, 1, 1, 2, 3,
+		// 뒷면
+		4, 5, 6, 5, 7, 6,
+		// 윗면
+		4, 0, 5, 5, 0, 1,
+		// 아랫면
+		2, 6, 3, 3, 6, 7,
+		// 왼쪽면
+		4, 6, 0, 0, 6, 2,
+		// 오른쪽면
+		1, 3, 5, 5, 3, 7
+	};
 
 	m_pd3dIndexBuffer = ::CreateBufferResource(pd3dDevice, pd3dCommandList, pnIndices, sizeof(UINT) * m_nIndices, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_STATE_INDEX_BUFFER, &m_pd3dIndexUploadBuffer);
 	m_d3dIndexBufferView.BufferLocation = m_pd3dIndexBuffer->GetGPUVirtualAddress();
