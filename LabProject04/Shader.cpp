@@ -189,8 +189,7 @@ CPlayerShader::~CPlayerShader() {}
 D3D12_INPUT_LAYOUT_DESC CPlayerShader::CreateInputLayout()
 {
 	UINT nInputElementDescs = 2;
-	D3D12_INPUT_ELEMENT_DESC *pd3dInputElementDescs = new
-		D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
+	D3D12_INPUT_ELEMENT_DESC *pd3dInputElementDescs = new D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
 	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
    D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 	pd3dInputElementDescs[1] = { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12,
@@ -228,7 +227,14 @@ CObjectsShader::~CObjectsShader()
 
 void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
-	
+	//테스트용 삼각형 객체를 생성한다.
+	m_nObjects = 1;
+	m_ppObjects = new CGameObject * [m_nObjects];
+	m_ppObjects[0] = new CGameObject();
+	m_ppObjects[0]->SetPosition(0.0f, 0.0f, 0.0f);
+	auto pMesh = new CTriangleMesh(pd3dDevice, pd3dCommandList);
+	m_ppObjects[0]->SetMesh(pMesh);
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 void CObjectsShader::AnimateObjects(float fTimeElapsed)
