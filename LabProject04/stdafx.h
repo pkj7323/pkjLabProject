@@ -14,8 +14,7 @@
 #include <memory.h>
 #include <tchar.h>
 
-#include <iostream>
-#include <string>
+
 #include <wrl.h>
 #include <shellapi.h>
 #include <d3d12.h>
@@ -29,6 +28,13 @@
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 using Microsoft::WRL::ComPtr;
+
+// c++ 표준 헤더 파일입니다.
+#include <iostream>
+#include <string>
+#include <vector>
+#include <fstream>
+
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "d3d12.lib")
@@ -75,9 +81,21 @@ extern ID3D12Resource *CreateBufferResource(ID3D12Device *pd3dDevice,
 											D3D12_HEAP_TYPE d3dHeapType = D3D12_HEAP_TYPE_UPLOAD,
 											D3D12_RESOURCE_STATES d3dResourceStates = D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
 											ID3D12Resource **ppd3dUploadBuffer = NULL);
+#define EPSILON 1.0e-10f
+inline bool IsZero(float fValue) { return((fabsf(fValue) < EPSILON)); }
+inline bool IsEqual(float fA, float fB) { return(::IsZero(fA - fB)); }
+inline float InverseSqrt(float fValue) { return 1.0f / sqrtf(fValue); }
+inline void Swap(float *pfS, float *pfT) { float fTemp = *pfS; *pfS = *pfT; *pfT = fTemp; }
+
 
 namespace Vector3
 {
+	inline bool IsZero(XMFLOAT3& xmf3Vector)
+	{
+		if (::IsZero(xmf3Vector.x) && ::IsZero(xmf3Vector.y) && ::IsZero(xmf3Vector.z))
+			return(true);
+		return(false);
+	}
 	inline XMFLOAT3 XMVectorToFloat3(XMVECTOR& xmvVector)
 	{
 		XMFLOAT3 xmf3Result;
@@ -113,7 +131,7 @@ namespace Vector3
 					  XMLoadFloat3(&xmf3Vector2));
 		return(xmf3Result);
 	}
-	inline float DotProduct(XMFLOAT3& xmf3Vector1, XMFLOAT3& xmf3Vector2)
+	inline float DotProduct(const XMFLOAT3& xmf3Vector1, const XMFLOAT3& xmf3Vector2)
 	{
 		XMFLOAT3 xmf3Result;
 		XMStoreFloat3(&xmf3Result, XMVector3Dot(XMLoadFloat3(&xmf3Vector1),

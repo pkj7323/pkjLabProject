@@ -225,15 +225,54 @@ CObjectsShader::~CObjectsShader()
 {
 }
 
-void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
+void CObjectsShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, void* pContext)
 {
-	//테스트용 삼각형 객체를 생성한다.
-	m_nObjects = 1;
+	CHeightMapTerrain *pTerrain = (CHeightMapTerrain *)pContext;
+	float fTerrainWidth = pTerrain->GetWidth(), fTerrainLength = pTerrain->GetLength();
+	float fxPitch = 12.0f * 3.5f;
+	float fyPitch = 12.0f * 3.5f;
+	float fzPitch = 12.0f * 3.5f;
+	//직육면체를 지형 표면에 그리고 지형보다 높은 위치에 일정한 간격으로 배치한다.
+	int xObjects = int(fTerrainWidth / fxPitch), yObjects = 2, zObjects =
+		int(fTerrainLength / fzPitch);
+	m_nObjects = xObjects * yObjects * zObjects;
 	m_ppObjects = new CGameObject * [m_nObjects];
-	m_ppObjects[0] = new CGameObject();
-	m_ppObjects[0]->SetPosition(0.0f, 0.0f, 0.0f);
-	auto pMesh = new CTriangleMesh(pd3dDevice, pd3dCommandList);
-	m_ppObjects[0]->SetMesh(pMesh);
+	CCubeMeshDiffused *pCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList,
+														 12.0f, 12.0f, 12.0f);
+	XMFLOAT3 xmf3RotateAxis, xmf3SurfaceNormal;
+	CRotatingObject *pRotatingObject = NULL;
+	for (int i = 0, x = 0; x < xObjects; x++)
+	{
+		for (int z = 0; z < zObjects; z++)
+		{
+			for (int y = 0; y < yObjects; y++)
+			{
+				pRotatingObject = new CRotatingObject(1);
+				pRotatingObject->SetMesh(0, pCubeMesh);
+				float xPosition = x * fxPitch;
+				float zPosition = z * fzPitch;
+				float fHeight = pTerrain->GetHeight(xPosition, zPosition);
+				pRotatingObject->SetPosition(xPosition, fHeight + (y * 10.0f * fyPitch) +
+											 6.0f, zPosition);
+				if (y == 0)
+				{
+					/*지형의 표면에 위치하는 직육면체는 지형의 기울기에 따라 방향이 다르게 배치한다. 직육면체가 위치할 지형의 법선
+				   벡터 방향과 직육면체의 y-축이 일치하도록 한다.*/
+					xmf3SurfaceNormal = pTerrain->GetNormal(xPosition, zPosition);
+					xmf3RotateAxis = Vector3::CrossProduct(XMFLOAT3(0.0f, 1.0f, 0.0f),
+														   xmf3SurfaceNormal);
+					if (Vector3::IsZero(xmf3RotateAxis)) xmf3RotateAxis = XMFLOAT3(0.0f, 1.0f,
+																				   0.0f);
+					float fAngle = acos(Vector3::DotProduct(XMFLOAT3(0.0f, 1.0f, 0.0f),
+															xmf3SurfaceNormal));
+					pRotatingObject->Rotate(&xmf3RotateAxis, XMConvertToDegrees(fAngle));
+				}
+				pRotatingObject->SetRotationAxis(XMFLOAT3(0.0f, 1.0f, 0.0f));
+				pRotatingObject->SetRotationSpeed(36.0f * (i % 10) + 36.0f);
+				m_ppObjects[i++] = pRotatingObject;
+			}
+		}
+	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
@@ -340,18 +379,18 @@ D3D12_INPUT_LAYOUT_DESC CInstancingShader::CreateInputLayout() {
 
 D3D12_SHADER_BYTECODE CInstancingShader::CreateVertexShader(ID3DBlob** ppd3dShaderBlob)
 {
-	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSInstancing", "vs_5_1",ppd3dShaderBlob));
+	return(CompileShaderFromFile(L"Shaders.hlsl", "VSInstancing", "vs_5_1",ppd3dShaderBlob));
 }
 
 D3D12_SHADER_BYTECODE CInstancingShader::CreatePixelShader(ID3DBlob** ppd3dShaderBlob)
 {
-	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSInstancing", "ps_5_1", ppd3dShaderBlob));
+	return(CompileShaderFromFile(L"Shaders.hlsl", "PSInstancing", "ps_5_1", ppd3dShaderBlob));
 }
 
 void CInstancingShader::CreateShader(ID3D12Device* pd3dDevice, ID3D12RootSignature* pd3dGraphicsRootSignature)
 {
 	m_nPipelineStates = 1;
-	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+	m_ppd3dPipelineStates = new ID3D12PipelineState* [m_nPipelineStates];
 	CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
 }
 
@@ -359,10 +398,13 @@ void CInstancingShader::CreateShaderVariables(ID3D12Device* pd3dDevice, ID3D12Gr
 {
 	//인스턴스 정보를 저장할 정점 버퍼를 업로드 힙 유형으로 생성한다.
 	m_pd3dcbGameObjects = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL,
-												 sizeof(VS_VB_INSTANCE) * m_nObjects, D3D12_HEAP_TYPE_UPLOAD,
+												 sizeof(VS_VB_INSTANCE) * m_nObjects, D3D12_HEAP_TYPE_UPLOAD, 
 												 D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
+	//21*21*21 = 9261개의 VS_VB_INSTANCE 구조체를 저장할 수 있는 크기로 정점 상수 버퍼 생성	
+
+
 	//정점 버퍼(업로드 힙)에 대한 포인터를 저장한다.
-	m_pd3dcbGameObjects->Map(0, NULL, (void **)&m_pcbMappedGameObjects);
+	m_pd3dcbGameObjects->Map(0, NULL, (void **)&m_pcbMappedGameObjects);//unmap은 릴리즈 쉐이더 베리어블에서 함
 	//정점 버퍼에 대한 뷰를 생성한다.
 	m_d3dInstancingBufferView.BufferLocation = m_pd3dcbGameObjects->GetGPUVirtualAddress();
 	m_d3dInstancingBufferView.StrideInBytes = sizeof(VS_VB_INSTANCE);
@@ -387,7 +429,7 @@ void CInstancingShader::ReleaseShaderVariables()
 void CInstancingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
 {
 	int xObjects = 10, yObjects = 10, zObjects = 10, i = 0;
-	m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);
+	m_nObjects = (xObjects * 2 + 1) * (yObjects * 2 + 1) * (zObjects * 2 + 1);//21*21*21 = 9261개
 	m_ppObjects = new CGameObject * [m_nObjects];
 	float fxPitch = 12.0f * 2.5f;
 	float fyPitch = 12.0f * 2.5f;
@@ -410,15 +452,12 @@ void CInstancingShader::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCom
 	//인스턴싱을 사용하여 렌더링하기 위하여 하나의 게임 객체만 메쉬를 가진다.
 	CCubeMeshDiffused *pCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList,
 														 12.0f, 12.0f, 12.0f);
-	m_ppObjects[0]->SetMesh(pCubeMesh);
+	m_ppObjects[0]->SetMesh(1, pCubeMesh);
 	//인스턴싱을 위한 정점 버퍼와 뷰를 생성한다.
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
-void CInstancingShader::ReleaseObjects()
-{
-	CObjectsShader::ReleaseObjects();
-}
+void CInstancingShader::ReleaseObjects() { CObjectsShader::ReleaseObjects(); }
 
 void CInstancingShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
 {
@@ -428,3 +467,40 @@ void CInstancingShader::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCame
 	//하나의 정점 데이터를 사용하여 모든 게임 객체(인스턴스)들을 렌더링한다.
 	m_ppObjects[0]->Render(pd3dCommandList, pCamera, m_nObjects, m_d3dInstancingBufferView);
 }
+CTerrainShader::CTerrainShader()
+{}
+CTerrainShader::~CTerrainShader()
+{}
+D3D12_INPUT_LAYOUT_DESC CTerrainShader::CreateInputLayout()
+{
+	UINT nInputElementDescs = 2;
+	D3D12_INPUT_ELEMENT_DESC *pd3dInputElementDescs = new
+		D3D12_INPUT_ELEMENT_DESC[nInputElementDescs];
+	pd3dInputElementDescs[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,
+   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	pd3dInputElementDescs[1] = { "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12,
+   D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	D3D12_INPUT_LAYOUT_DESC d3dInputLayoutDesc;
+	d3dInputLayoutDesc.pInputElementDescs = pd3dInputElementDescs;
+	d3dInputLayoutDesc.NumElements = nInputElementDescs;
+	return(d3dInputLayoutDesc);
+}
+
+D3D12_SHADER_BYTECODE CTerrainShader::CreateVertexShader(ID3DBlob **ppd3dShaderBlob)
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "VSDiffused", "vs_5_1",
+										  ppd3dShaderBlob));
+}
+D3D12_SHADER_BYTECODE CTerrainShader::CreatePixelShader(ID3DBlob **ppd3dShaderBlob)
+{
+	return(CShader::CompileShaderFromFile(L"Shaders.hlsl", "PSDiffused", "ps_5_1",
+										  ppd3dShaderBlob));
+}
+void CTerrainShader::CreateShader(ID3D12Device *pd3dDevice, ID3D12RootSignature
+								  *pd3dGraphicsRootSignature)
+{
+	m_nPipelineStates = 1;
+	m_ppd3dPipelineStates = new ID3D12PipelineState * [m_nPipelineStates];
+	CShader::CreateShader(pd3dDevice, pd3dGraphicsRootSignature);
+}
+

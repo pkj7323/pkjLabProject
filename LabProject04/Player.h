@@ -39,7 +39,7 @@ protected:
 	CCamera *m_pCamera = NULL;
 		
 public:
-	CPlayer();
+	CPlayer(int nMeshes = 1);
 	virtual ~CPlayer();
 	
 	XMFLOAT3 GetPosition() { return(m_xmf3Position); }
@@ -97,8 +97,19 @@ class CAirplanePlayer : public CPlayer
 {
 public:
 	CAirplanePlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList,
-					ID3D12RootSignature *pd3dGraphicsRootSignature);
+					ID3D12RootSignature *pd3dGraphicsRootSignature, int nMeshes = 1);
 	virtual ~CAirplanePlayer();
 	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
 	virtual void OnPrepareRender();
+};
+
+class CTerrainPlayer : public CPlayer
+{
+public:
+	CTerrainPlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList,
+				   ID3D12RootSignature *pd3dGraphicsRootSignature, void *pContext, int nMeshes = 1);
+	virtual ~CTerrainPlayer();
+	virtual CCamera *ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed);
+	virtual void OnPlayerUpdateCallback(float fTimeElapsed);
+	virtual void OnCameraUpdateCallback(float fTimeElapsed);
 };

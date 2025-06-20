@@ -25,14 +25,15 @@ public:
 	ID3D12RootSignature* CreateGraphicsRootSignature(ID3D12Device *pd3dDevice);
 	ID3D12RootSignature* GetGraphicsRootSignature();
 
+	CHeightMapTerrain *GetTerrain() { return(m_pTerrain); }
+
 	
 
 protected:
 	//배치(Batch) 처리를 하기 위하여 씬을 셰이더들의 리스트로 표현한다.
-	CInstancingShader *m_pShaders = NULL;
+	CObjectsShader *m_pShaders = NULL;
 	int m_nShaders = 0;
-	CObjectsShader* m_pObjectsShaders = NULL;
-	
+	CHeightMapTerrain *m_pTerrain = NULL;
 
 	ID3D12RootSignature* m_pd3dGraphicsRootSignature = NULL;
 };
