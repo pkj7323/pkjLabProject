@@ -87,7 +87,7 @@ void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* p
 #else
 //지형을 하나의 격자 메쉬(257x257)로 생성한다.  
     m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList,
-                                       m_pd3dGraphicsRootSignature, _T("C:/Users/MSI/source/repos/pkjLabProject/LabProject04/Assets/Image/Terrain/HeightMap.raw"), 257, 257, 257,
+                                       m_pd3dGraphicsRootSignature, _T("../Assets/Image/Terrain/HeightMap.raw"), 257, 257, 257,
                                        257, xmf3Scale, xmf4Color);
 #endif
     m_nShaders = 1;
@@ -107,7 +107,6 @@ void CScene::ReleaseObjects()
         m_pShaders[i].ReleaseShaderVariables();
         m_pShaders[i].ReleaseObjects();
     }
-	delete m_pObjectsShaders;
     delete[] m_pShaders;
     if (m_pTerrain) delete m_pTerrain;
 }
@@ -118,8 +117,7 @@ bool CScene::ProcessInput(UCHAR* pKeysBuffer)
 }
 void CScene::ReleaseUploadBuffers()
 {
-    if (m_pObjectsShaders) 
-		m_pObjectsShaders->ReleaseUploadBuffers();
+
     for (int i = 0; i < m_nShaders; i++) 
         m_pShaders[i].ReleaseUploadBuffers();
     if (m_pTerrain) m_pTerrain->ReleaseUploadBuffers();
@@ -128,7 +126,7 @@ void CScene::ReleaseUploadBuffers()
 
 void CScene::AnimateObjects(float fTimeElapsed)
 {
-	m_pObjectsShaders->AnimateObjects(fTimeElapsed);
+	
     for (int i = 0; i < m_nShaders; i++)
     {
         m_pShaders[i].AnimateObjects(fTimeElapsed);
@@ -140,7 +138,7 @@ void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera
     pCamera->SetViewportsAndScissorRects(pd3dCommandList);
     pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
     pCamera->UpdateShaderVariables(pd3dCommandList);
-	m_pObjectsShaders->Render(pd3dCommandList, pCamera);
+	
     for (int i = 0; i < m_nShaders; i++)
     {
         m_pShaders[i].Render(pd3dCommandList, pCamera);
