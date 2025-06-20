@@ -113,5 +113,11 @@ private:
 	CScene* m_pScene;
 	// ¾ÀÀ» À§ÇÑ ¸â¹öº¯¼ö
 
+
+	ID3D12RootSignature* m_pd3dSimpleRootSignature = NULL;
+	ID3D12PipelineState* m_pd3dSimplePipelineState = NULL;
+	CMesh* m_pTestTriangle = NULL;
+
+
 };
 

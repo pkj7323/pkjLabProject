@@ -54,10 +54,11 @@ void CMaterial::SetMaterialColors(CMaterialColors *pMaterialColors)
 
 void CMaterial::UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList)
 {
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &(m_pMaterialColors->m_xmf4Ambient), 16);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &(m_pMaterialColors->m_xmf4Diffuse), 20);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &(m_pMaterialColors->m_xmf4Specular), 24);
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 4, &(m_pMaterialColors->m_xmf4Emissive), 28);
+	// 루트 파라미터 번호를 [2]에서 [1]로 수정합니다. (오프셋은 16부터 시작)
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(m_pMaterialColors->m_xmf4Ambient), 16);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(m_pMaterialColors->m_xmf4Diffuse), 20);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(m_pMaterialColors->m_xmf4Specular), 24);
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 4, &(m_pMaterialColors->m_xmf4Emissive), 28);
 }
 
 void CMaterial::PrepareShaders(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature)
@@ -221,7 +222,9 @@ void CGameObject::UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandLis
 {
 	XMFLOAT4X4 xmf4x4World;
 	XMStoreFloat4x4(&xmf4x4World, XMMatrixTranspose(XMLoadFloat4x4(pxmf4x4World)));
-	pd3dCommandList->SetGraphicsRoot32BitConstants(2, 16, &xmf4x4World, 0);
+
+	// 루트 파라미터 번호를 [2]에서 [1]로 수정합니다.
+	pd3dCommandList->SetGraphicsRoot32BitConstants(1, 16, &xmf4x4World, 0);
 }
 
 void CGameObject::UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList, CMaterial *pMaterial) {}
@@ -308,6 +311,23 @@ BYTE ReadStringFromFile(FILE* pInFile, char* pstrToken)
 	BYTE nStrLength = 0;
 	UINT nReads = 0;
 	nReads = (UINT)::fread(&nStrLength, sizeof(BYTE), 1, pInFile);
+
+	// --- 최종 수정 코드 ---
+	// 읽으려는 길이가 버퍼(pstrToken)의 크기(64)를 넘는지 확인합니다.
+	// 63으로 하는 것이 더 안전합니다 (마지막은 NULL 문자'\0'를 위함).
+	if (nStrLength > 63)
+	{
+		TCHAR pstrDebug[256] = { 0 };
+		_stprintf_s(pstrDebug, 256, _T("경고: 파일에서 읽으려는 문자열 길이가 버퍼 크기를 초과합니다. 길이: %d\n"), nStrLength);
+		OutputDebugString(pstrDebug);
+
+		// 문제가 더 커지지 않도록 파일 포인터를 해당 길이만큼 강제로 이동시키고,
+		// 우리 버퍼에는 아무것도 쓰지 않도록 처리합니다.
+		fseek(pInFile, nStrLength, SEEK_CUR);
+		nStrLength = 0;
+	}
+	// --- 여기까지 ---
+
 	nReads = (UINT)::fread(pstrToken, sizeof(char), nStrLength, pInFile);
 	pstrToken[nStrLength] = '\0';
 
@@ -405,7 +425,9 @@ MATERIALSLOADINFO *CGameObject::LoadMaterialsInfoFromFile(ID3D12Device *pd3dDevi
 	return(pMaterialsInfo);
 }
 
-CGameObject *CGameObject::LoadFrameHierarchyFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, FILE *pInFile)
+
+CGameObject *CGameObject::LoadFrameHierarchyFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, 
+													 ID3D12RootSignature *pd3dGraphicsRootSignature, FILE *pInFile)
 {
 	char pstrToken[64] = { '\0' };
 	UINT nReads = 0;
@@ -415,6 +437,8 @@ CGameObject *CGameObject::LoadFrameHierarchyFromFile(ID3D12Device *pd3dDevice, I
 	for (; ; )
 	{
 		::ReadStringFromFile(pInFile, pstrToken);
+
+
 		if (!strcmp(pstrToken, "<Frame>:"))
 		{
 			pGameObject = new CGameObject();
@@ -457,8 +481,11 @@ CGameObject *CGameObject::LoadFrameHierarchyFromFile(ID3D12Device *pd3dDevice, I
 					pGameObject->SetMaterial(i, pMaterial);
 				}
 			}
-			delete[] pMaterialsInfo->m_pMaterials;
-			delete pMaterialsInfo;
+			if (pMaterialsInfo)
+			{
+				delete[] pMaterialsInfo->m_pMaterials;
+				delete pMaterialsInfo;
+			}
 		}
 		else if (!strcmp(pstrToken, "<Children>:"))
 		{

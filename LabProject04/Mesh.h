@@ -1,7 +1,8 @@
-// Mesh.h
+// Mesh.h (최종 수정본)
 
 #pragma once
-#include "GameObject.h" // CHeightMapTerrain이 CGameObject를 상속받으므로 포함
+// CHeightMapTerrain이 CGameObject를 상속받으므로, GameObject.h를 포함합니다.
+#include "GameObject.h" 
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
 // 정점 구조체 선언
@@ -98,8 +99,8 @@ public:
 class CMeshIlluminatedFromFile : public CMeshFromFile
 {
 public:
+	// **수정점 1: 생성자가 파일 로딩용 하나만 남습니다.**
 	CMeshIlluminatedFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, CMeshLoadInfo *pMeshInfo);
-	CMeshIlluminatedFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, int nWidth, int nLength, XMFLOAT3 xmf3Scale, void *pContext);
 	virtual ~CMeshIlluminatedFromFile();
 protected:
 	ID3D12Resource* m_pd3dNormalBuffer = NULL;
@@ -111,7 +112,7 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 지형 관련 클래스 선언부 (GameObject.h에서 이곳으로 이동)
+// 지형 관련 클래스 선언부
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CHeightMapImage
@@ -130,6 +131,15 @@ public:
 	int GetHeightMapLength() { return(m_nLength); }
 };
 
+// **수정점 2: 지형 생성을 전담하는 새로운 클래스입니다.**
+class CHeightMapGridMesh : public CMesh
+{
+public:
+	CHeightMapGridMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, int xStart, int zStart, int nWidth, int nLength, XMFLOAT3 xmf3Scale, void* pContext);
+	virtual ~CHeightMapGridMesh();
+};
+
+
 class CHeightMapTerrain : public CGameObject
 {
 private:
@@ -144,4 +154,18 @@ public:
 	XMFLOAT3 GetNormal(float x, float z) { return(m_pHeightMapImage->GetHeightMapNormal(int(x / m_xmf3Scale.x), int(z / m_xmf3Scale.z))); }
 	float GetWidth() { return(m_nWidth * m_xmf3Scale.x); }
 	float GetLength() { return(m_nLength * m_xmf3Scale.z); }
+};
+class CCubeMeshDiffused : public CMesh
+{
+public:
+	CCubeMeshDiffused(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, float fWidth = 2.0f, float fHeight = 2.0f, float fDepth = 2.0f);
+	virtual ~CCubeMeshDiffused();
+};
+
+
+class CScreenAlignedTriangleMesh : public CMesh
+{
+public:
+	CScreenAlignedTriangleMesh(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList);
+	virtual ~CScreenAlignedTriangleMesh();
 };

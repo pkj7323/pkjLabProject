@@ -152,7 +152,10 @@ CCamera* CPlayer::OnChangeCamera(DWORD nNewCameraMode, DWORD nCurrentCameraMode)
 	if (m_pCamera) delete m_pCamera;
 	return(pNewCamera);
 }
-
+void CPlayer::CreateShaderVariables(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
+{
+	if (m_pCamera) m_pCamera->CreateShaderVariables(pd3dDevice, pd3dCommandList);
+}
 
 // CTerrainPlayer 클래스 구현 (지형 상호작용 로직)
 CTerrainPlayer::CTerrainPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext) : CPlayer(0)
@@ -231,6 +234,29 @@ void CTerrainPlayer::OnCameraUpdateCallback(float fTimeElapsed)
 }
 
 // CTankPlayer 클래스 구현 (탱크 모델 로딩 및 설정)
+//CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
+//	: CTerrainPlayer(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, pContext)
+//{
+//	m_pCamera = ChangeCamera(THIRD_PERSON_CAMERA, 0.0f);
+//
+//	CHeightMapTerrain* pTerrain = (CHeightMapTerrain*)pContext;
+//	float fHeight = pTerrain->GetHeight(pTerrain->GetWidth() * 0.5f, pTerrain->GetLength() * 0.5f) + 5.0f;
+//	SetPosition(XMFLOAT3(pTerrain->GetWidth() * 0.5f, fHeight, pTerrain->GetLength() * 0.5f));
+//
+//	SetPlayerUpdatedContext(pContext);
+//	SetCameraUpdatedContext(pContext);
+//
+//	CM26Object* pTankModel = new CM26Object();
+//	// Player.cpp 의 CTankPlayer 생성자 안
+//	pTankModel->SetChild(CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Model/M26.bin"));
+//	pTankModel->OnInitialize();
+//	pTankModel->SetScale(0.2f, 0.2f, 0.2f);
+//
+//	SetChild(pTankModel, true);
+//}
+
+// Player.cpp
+
 CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, void* pContext)
 	: CTerrainPlayer(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, pContext)
 {
@@ -243,12 +269,63 @@ CTankPlayer::CTankPlayer(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd
 	SetPlayerUpdatedContext(pContext);
 	SetCameraUpdatedContext(pContext);
 
-	CM26Object* pTankModel = new CM26Object();
-	pTankModel->SetChild(CGameObject::LoadGeometryFromFile(pd3dDevice, pd3dCommandList, pd3dGraphicsRootSignature, "Tank.bin"));
-	pTankModel->OnInitialize();
-	pTankModel->SetScale(0.2f, 0.2f, 0.2f);
+	// --- 탱크 모델을 파일에서 로드하는 대신, 코드로 직접 생성합니다 ---
 
-	SetChild(pTankModel, true);
+	// 1. 탱크 몸체 (Body) 만들기
+	CCubeMeshDiffused* pBodyMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 10.0f, 5.0f, 18.0f);
+	CGameObject* pBody = new CGameObject(1);
+	pBody->SetMesh(pBodyMesh);
+
+	// 몸체 재질 설정 (짙은 녹색)
+	CMaterial* pBodyMaterial = new CMaterial();
+	MATERIALLOADINFO bodyMaterialInfo;
+	bodyMaterialInfo.m_xmf4AlbedoColor = XMFLOAT4(0.2f, 0.4f, 0.2f, 1.0f);
+	bodyMaterialInfo.m_xmf4SpecularColor = XMFLOAT4(0.3f, 0.3f, 0.3f, 10.0f);
+	pBodyMaterial->SetMaterialColors(new CMaterialColors(&bodyMaterialInfo));
+	pBodyMaterial->SetIlluminatedShader();
+	pBody->SetMaterial(0, pBodyMaterial);
+
+	// 플레이어(보이지 않는 컨트롤러)의 자식으로 몸체를 붙입니다.
+	SetChild(pBody, true);
+
+	// 2. 탱크 포탑 (Turret) 만들기
+	CCubeMeshDiffused* pTurretMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 8.0f, 4.0f, 8.0f);
+	// 포탑은 회전해야 하므로 CRotatingObject로 생성합니다.
+	CRotatingObject* pTurret = new CRotatingObject();
+	pTurret->SetMesh(pTurretMesh);
+	pTurret->SetPosition(0.0f, 4.5f, 0.0f); // 몸체 위에 위치하도록 y좌표 조절
+
+	// 포탑 재질 설정 (조금 더 밝은 녹색)
+	CMaterial* pTurretMaterial = new CMaterial();
+	MATERIALLOADINFO turretMaterialInfo;
+	turretMaterialInfo.m_xmf4AlbedoColor = XMFLOAT4(0.25f, 0.45f, 0.25f, 1.0f);
+	turretMaterialInfo.m_xmf4SpecularColor = XMFLOAT4(0.3f, 0.3f, 0.3f, 10.0f);
+	pTurretMaterial->SetMaterialColors(new CMaterialColors(&turretMaterialInfo));
+	pTurretMaterial->SetIlluminatedShader();
+	pTurret->SetMaterial(0, pTurretMaterial);
+
+	// 포탑을 몸체의 자식으로 붙입니다.
+	pBody->SetChild(pTurret, true);
+
+	// 3. 탱크 포신 (Cannon) 만들기
+	CCubeMeshDiffused* pCannonMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 1.5f, 1.5f, 12.0f);
+	CGameObject* pCannon = new CGameObject(1);
+	pCannon->SetMesh(pCannonMesh);
+	pCannon->SetPosition(0.0f, 1.0f, 10.0f); // 포탑 앞에 위치하도록 z좌표 조절
+
+	// 포신 재질 설정 (회색)
+	CMaterial* pCannonMaterial = new CMaterial();
+	MATERIALLOADINFO cannonMaterialInfo;
+	cannonMaterialInfo.m_xmf4AlbedoColor = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
+	cannonMaterialInfo.m_xmf4SpecularColor = XMFLOAT4(0.5f, 0.5f, 0.5f, 5.0f);
+	pCannonMaterial->SetMaterialColors(new CMaterialColors(&cannonMaterialInfo));
+	pCannonMaterial->SetIlluminatedShader();
+	pCannon->SetMaterial(0, pCannonMaterial);
+
+	// 포신을 포탑의 자식으로 붙입니다.
+	pTurret->SetChild(pCannon, true);
+
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
 CTankPlayer::~CTankPlayer() {}

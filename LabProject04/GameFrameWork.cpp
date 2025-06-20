@@ -348,6 +348,55 @@ void CGameFramework::BuildObjects()
 	if (m_pScene) m_pScene->SetPlayer(m_pPlayer);
 	if (m_pPlayer) m_pCamera = m_pPlayer->GetCamera();
 
+	// --- 테스트용 객체 생성 코드 추가 ---
+	// 1. 가장 단순한 빈 루트 시그니처를 생성합니다.
+	D3D12_ROOT_SIGNATURE_DESC d3dRootSignatureDesc;
+	::ZeroMemory(&d3dRootSignatureDesc, sizeof(D3D12_ROOT_SIGNATURE_DESC));
+	d3dRootSignatureDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	ID3DBlob *pd3dSignatureBlob = NULL, *pd3dErrorBlob = NULL;
+	D3D12SerializeRootSignature(&d3dRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &pd3dSignatureBlob, &pd3dErrorBlob);
+	m_pd3dDevice->CreateRootSignature(0, pd3dSignatureBlob->GetBufferPointer(), pd3dSignatureBlob->GetBufferSize(), __uuidof(ID3D12RootSignature), (void **)&m_pd3dSimpleRootSignature);
+	if (pd3dSignatureBlob) pd3dSignatureBlob->Release();
+
+	// 2. 가장 단순한 파이프라인 상태 객체(PSO)를 생성합니다.
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC d3dPipelineStateDesc;
+	::ZeroMemory(&d3dPipelineStateDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	d3dPipelineStateDesc.pRootSignature = m_pd3dSimpleRootSignature;
+	d3dPipelineStateDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	d3dPipelineStateDesc.SampleMask = UINT_MAX;
+	d3dPipelineStateDesc.NumRenderTargets = 1;
+	d3dPipelineStateDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	d3dPipelineStateDesc.DSVFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	d3dPipelineStateDesc.SampleDesc.Count = 1;
+
+	// Test.hlsl 셰이더를 사용합니다.
+	ID3DBlob *pvsByteCode = NULL, *ppsByteCode = NULL;
+	d3dPipelineStateDesc.VS = CShader::CompileShaderFromFile(L"Test.hlsl", "VSPassThrough", "vs_5_1", &pvsByteCode);
+	d3dPipelineStateDesc.PS = CShader::CompileShaderFromFile(L"Test.hlsl", "PSPassThrough", "ps_5_1", &ppsByteCode);
+
+	// 입력 레이아웃 설정
+	D3D12_INPUT_ELEMENT_DESC pInputLayout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+	};
+	d3dPipelineStateDesc.InputLayout = { pInputLayout, _countof(pInputLayout) };
+
+	// 기본 래스터라이저, 블렌드, 깊이 상태 사용
+	d3dPipelineStateDesc.RasterizerState = CShader::CreateRasterizerState();
+	d3dPipelineStateDesc.BlendState = CShader::CreateBlendState();
+	d3dPipelineStateDesc.DepthStencilState = CShader::CreateDepthStencilState();
+	d3dPipelineStateDesc.DepthStencilState.DepthEnable = false; // 깊이 테스트 끔
+
+	m_pd3dDevice->CreateGraphicsPipelineState(&d3dPipelineStateDesc, __uuidof(ID3D12PipelineState), (void **)&m_pd3dSimplePipelineState);
+
+	if (pvsByteCode) pvsByteCode->Release();
+	if (ppsByteCode) ppsByteCode->Release();
+
+	// 3. 테스트용 삼각형 메쉬를 생성합니다.
+	m_pTestTriangle = new CScreenAlignedTriangleMesh(m_pd3dDevice, m_pd3dCommandList);
+	// --- 테스트 코드 끝 ---
+
 	m_pd3dCommandList->Close();
 	ID3D12CommandList* ppd3dCommandLists[] = { m_pd3dCommandList };
 	m_pd3dCommandQueue->ExecuteCommandLists(1, ppd3dCommandLists);
@@ -449,6 +498,14 @@ void CGameFramework::FrameAdvance()
 
 	if (m_pPlayer) m_pPlayer->Render(m_pd3dCommandList, m_pCamera);
 
+	// --- 테스트용 삼각형 그리기 코드 추가 ---
+	if (m_pd3dSimpleRootSignature && m_pd3dSimplePipelineState && m_pTestTriangle)
+	{
+		m_pd3dCommandList->SetGraphicsRootSignature(m_pd3dSimpleRootSignature);
+		m_pd3dCommandList->SetPipelineState(m_pd3dSimplePipelineState);
+		m_pTestTriangle->Render(m_pd3dCommandList);
+	}
+	// --- 여기까지 ---
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	d3dResourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
