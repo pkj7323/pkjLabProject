@@ -1,147 +1,183 @@
+// Scene.cpp
+
 #include "stdafx.h"
 #include "Scene.h"
-
-#include "Camera.h"
-#include "Shader.h"
+#include "Mesh.h" // CHeightMapTerrain 클래스를 사용하기 위해 포함
 
 CScene::CScene()
-{}
+{
+	m_pd3dGraphicsRootSignature = NULL;
+	m_pPlayer = NULL;
+	m_pTerrain = NULL;
+	m_pLights = NULL;
+	m_nLights = 0;
+	m_xmf4GlobalAmbient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
+	m_pd3dcbLights = NULL;
+	m_pcbMappedLights = NULL;
+	m_fElapsedTime = 0.0f;
+}
 
 CScene::~CScene()
 {}
 
-bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
+void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
 {
-    return(false);
+	// 1. 조명, 재질 등 모든 것을 렌더링할 수 있는 루트 시그니처를 생성합니다.
+	m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
+
+	// 2. CMaterial 클래스가 조명 셰이더를 사용할 수 있도록 준비시킵니다.
+	CMaterial::PrepareShaders(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature);
+
+	// 3. 월드를 비출 기본 조명을 설정합니다.
+	BuildDefaultLightsAndMaterials();
+
+	// 4. Mesh.h/.cpp에 새로 통합한 CHeightMapTerrain 클래스를 이용해 지형을 생성합니다.
+	m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, _T("../Assets/Image/Terrain/HeightMap.raw"), 257, 257, 17, 17, XMFLOAT3(8.0f, 2.0f, 8.0f));
+
+	// 5. 조명 정보를 셰이더로 넘기기 위한 상수 버퍼를 생성합니다.
+	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
 
-bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam)
+void CScene::BuildDefaultLightsAndMaterials()
 {
-    return(false);
-}
+	m_nLights = 2;
+	m_pLights = new LIGHT[m_nLights];
+	::ZeroMemory(m_pLights, sizeof(LIGHT) * m_nLights);
 
-ID3D12RootSignature* CScene::CreateGraphicsRootSignature(ID3D12Device* pd3dDevice)
-{
-    ID3D12RootSignature *pd3dGraphicsRootSignature = NULL;
-    D3D12_ROOT_PARAMETER pd3dRootParameters[2];
-    pd3dRootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;//루트 상수
-	pd3dRootParameters[0].Constants.Num32BitValues = 16;//16개의 32비트 정수값을 루트 상수로 사용한다.
-	pd3dRootParameters[0].Constants.ShaderRegister = 0;//셰이더 레지스터 0번에 루트 상수를 사용한다.
-    pd3dRootParameters[0].Constants.RegisterSpace = 0;
-	pd3dRootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//루트 상수는 버텍스 셰이더에서 사용한다.
+	m_xmf4GlobalAmbient = XMFLOAT4(0.3f, 0.3f, 0.3f, 1.0f);
 
-	pd3dRootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;//루트 상수
-	pd3dRootParameters[1].Constants.Num32BitValues = 32;//32개의 32비트 정수값을 루트 상수로 사용한다.
-	pd3dRootParameters[1].Constants.ShaderRegister = 1;//셰이더 레지스터 1번에 루트 상수를 사용한다.
-    pd3dRootParameters[1].Constants.RegisterSpace = 0;
-	pd3dRootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;//루트 상수는 버텍스 셰이더에서 사용한다.
-    D3D12_ROOT_SIGNATURE_FLAGS d3dRootSignatureFlags =
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | //입력 어셈블러 입력 레이아웃을 허용한다.
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |//헐 셰이더 루트 접근을 거부한다.
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |//도메인 셰이더 루트 접근을 거부한다.
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |//지오메트리 셰이더 루트 접근을 거부한다.
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;//픽셀 셰이더 루트 접근을 거부한다.
+	// 태양과 같은 주 방향성 조명 (Directional Light)
+	m_pLights[0].m_bEnable = true;
+	m_pLights[0].m_nType = DIRECTIONAL_LIGHT;
+	m_pLights[0].m_xmf4Ambient = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+	m_pLights[0].m_xmf4Diffuse = XMFLOAT4(0.7f, 0.7f, 0.7f, 1.0f);
+	m_pLights[0].m_xmf4Specular = XMFLOAT4(0.4f, 0.4f, 0.4f, 0.0f);
+	m_pLights[0].m_xmf3Direction = XMFLOAT3(0.5f, -0.7f, 0.5f);
 
-    
-    D3D12_ROOT_SIGNATURE_DESC d3dRootSignatureDesc;
-    ::ZeroMemory(&d3dRootSignatureDesc, sizeof(D3D12_ROOT_SIGNATURE_DESC));
-    d3dRootSignatureDesc.NumParameters = _countof(pd3dRootParameters);//2
-    d3dRootSignatureDesc.pParameters = pd3dRootParameters;
-    d3dRootSignatureDesc.NumStaticSamplers = 0;
-    d3dRootSignatureDesc.pStaticSamplers = NULL;
-    d3dRootSignatureDesc.Flags = d3dRootSignatureFlags;
-    ID3DBlob *pd3dSignatureBlob = NULL;
-    ID3DBlob *pd3dErrorBlob = NULL;
-    ::D3D12SerializeRootSignature(&d3dRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1,&pd3dSignatureBlob, &pd3dErrorBlob);
-    if (pd3dErrorBlob)
-    {
-        OutputDebugStringA((char*)pd3dErrorBlob->GetBufferPointer());
-		__debugbreak(); // 디버그 모드에서 오류를 출력하고 중단
-    }
-    pd3dDevice->CreateRootSignature(0, pd3dSignatureBlob->GetBufferPointer(),
-                                    pd3dSignatureBlob->GetBufferSize(), __uuidof(ID3D12RootSignature), (void**)&pd3dGraphicsRootSignature);
-    if (pd3dSignatureBlob) pd3dSignatureBlob->Release();
-    if (pd3dErrorBlob) pd3dErrorBlob->Release();
-    return(pd3dGraphicsRootSignature);
-}
-
-ID3D12RootSignature* CScene::GetGraphicsRootSignature()
-{
-    return (m_pd3dGraphicsRootSignature);
-}
-
-
-void CScene::BuildObjects(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList)
-{
-    m_pd3dGraphicsRootSignature = CreateGraphicsRootSignature(pd3dDevice);
-    //지형을 확대할 스케일 벡터이다. x-축과 z-축은 8배, y-축은 2배 확대한다.
-    XMFLOAT3 xmf3Scale(8.0f, 2.0f, 8.0f);
-    XMFLOAT4 xmf4Color(0.0f, 0.2f, 0.0f, 0.0f);
-    //지형을 높이 맵 이미지 파일(HeightMap.raw)을 사용하여 생성한다. 높이 맵의 크기는 가로x세로(257x257)이다.
-#ifdef _WITH_TERRAIN_PARTITION
-/*하나의 격자 메쉬의 크기는 가로x세로(17x17)이다. 지형 전체는 가로 방향으로 16개, 세로 방향으로 16의 격자 메
-쉬를 가진다. 지형을 구성하는 격자 메쉬의 개수는 총 256(16x16)개가 된다.*/
-    m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList,
-                                       m_pd3dGraphicsRootSignature, _T("../Assets/Image/Terrain/HeightMap.raw"), 257, 257, 17,
-                                       17, xmf3Scale, xmf4Color);
-#else
-//지형을 하나의 격자 메쉬(257x257)로 생성한다.  
-    m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList,
-                                       m_pd3dGraphicsRootSignature, _T("../Assets/Image/Terrain/HeightMap.raw"), 257, 257, 257,
-                                       257, xmf3Scale, xmf4Color);
-#endif
-    m_nShaders = 1;
-    m_pShaders = new CObjectsShader[m_nShaders];
-    m_pShaders[0].CreateShader(pd3dDevice, m_pd3dGraphicsRootSignature);
-    m_pShaders[0].BuildObjects(pd3dDevice, pd3dCommandList, m_pTerrain);
+	// 플레이어를 따라다니는 스포트라이트 (Spot Light)
+	m_pLights[1].m_bEnable = true;
+	m_pLights[1].m_nType = SPOT_LIGHT;
+	m_pLights[1].m_fRange = 500.0f;
+	m_pLights[1].m_xmf4Ambient = XMFLOAT4(0.1f, 0.1f, 0.1f, 1.0f);
+	m_pLights[1].m_xmf4Diffuse = XMFLOAT4(0.8f, 0.8f, 0.4f, 1.0f);
+	m_pLights[1].m_xmf4Specular = XMFLOAT4(0.5f, 0.5f, 0.2f, 0.0f);
+	m_pLights[1].m_xmf3Position = XMFLOAT3(0.0f, 0.0f, 0.0f); // 플레이어 위치로 계속 갱신될 예정
+	m_pLights[1].m_xmf3Direction = XMFLOAT3(0.0f, 0.0f, 1.0f); // 플레이어 방향으로 계속 갱신될 예정
+	m_pLights[1].m_xmf3Attenuation = XMFLOAT3(1.0f, 0.005f, 0.0001f);
+	m_pLights[1].m_fFalloff = 8.0f;
+	m_pLights[1].m_fPhi = (float)cos(XMConvertToRadians(40.0f));
+	m_pLights[1].m_fTheta = (float)cos(XMConvertToRadians(20.0f));
 }
 
 void CScene::ReleaseObjects()
 {
-    if (m_pd3dGraphicsRootSignature)
-    {
-        m_pd3dGraphicsRootSignature->Release();
-    }
-    for (int i = 0; i < m_nShaders; i++)
-    {
-        m_pShaders[i].ReleaseShaderVariables();
-        m_pShaders[i].ReleaseObjects();
-    }
-    delete[] m_pShaders;
-    if (m_pTerrain) delete m_pTerrain;
+	if (m_pd3dGraphicsRootSignature) m_pd3dGraphicsRootSignature->Release();
+	if (m_pTerrain) m_pTerrain->Release();
+	if (m_pLights) delete[] m_pLights;
+
+	ReleaseShaderVariables();
 }
 
-bool CScene::ProcessInput(UCHAR* pKeysBuffer)
+// Scene.cpp
+
+ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevice)
 {
-    return(false);
+	ID3D12RootSignature *pd3dGraphicsRootSignature = NULL;
+
+	D3D12_ROOT_PARAMETER pd3dRootParameters[3];
+
+	// Camera (HLSL의 register(b0)와 일치)
+	pd3dRootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	pd3dRootParameters[0].Descriptor.ShaderRegister = 0; // 1에서 0으로 수정
+	pd3dRootParameters[0].Descriptor.RegisterSpace = 0;
+	pd3dRootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	// GameObject (HLSL의 register(b2)와 일치)
+	pd3dRootParameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	pd3dRootParameters[1].Constants.Num32BitValues = 32;
+	pd3dRootParameters[1].Constants.ShaderRegister = 2; // 그대로 2
+	pd3dRootParameters[1].Constants.RegisterSpace = 0;
+	pd3dRootParameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	// Lights (HLSL의 register(b4)와 일치)
+	pd3dRootParameters[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	pd3dRootParameters[2].Descriptor.ShaderRegister = 4; // 그대로 4
+	pd3dRootParameters[2].Descriptor.RegisterSpace = 0;
+	pd3dRootParameters[2].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	D3D12_ROOT_SIGNATURE_FLAGS d3dRootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT | D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS | D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+	D3D12_ROOT_SIGNATURE_DESC d3dRootSignatureDesc;
+	::ZeroMemory(&d3dRootSignatureDesc, sizeof(D3D12_ROOT_SIGNATURE_DESC));
+	d3dRootSignatureDesc.NumParameters = _countof(pd3dRootParameters);
+	d3dRootSignatureDesc.pParameters = pd3dRootParameters;
+	d3dRootSignatureDesc.NumStaticSamplers = 0;
+	d3dRootSignatureDesc.pStaticSamplers = NULL;
+	d3dRootSignatureDesc.Flags = d3dRootSignatureFlags;
+
+	ID3DBlob *pd3dSignatureBlob = NULL;
+	ID3DBlob *pd3dErrorBlob = NULL;
+	D3D12SerializeRootSignature(&d3dRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &pd3dSignatureBlob, &pd3dErrorBlob);
+	pd3dDevice->CreateRootSignature(0, pd3dSignatureBlob->GetBufferPointer(), pd3dSignatureBlob->GetBufferSize(), __uuidof(ID3D12RootSignature), (void **)&pd3dGraphicsRootSignature);
+	if (pd3dSignatureBlob) pd3dSignatureBlob->Release();
+	if (pd3dErrorBlob) pd3dErrorBlob->Release();
+
+	return(pd3dGraphicsRootSignature);
 }
+
+void CScene::CreateShaderVariables(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList)
+{
+	UINT ncbElementBytes = ((sizeof(LIGHTS) + 255) & ~255); // 256의 배수
+	m_pd3dcbLights = ::CreateBufferResource(pd3dDevice, pd3dCommandList, NULL, ncbElementBytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, NULL);
+	m_pd3dcbLights->Map(0, NULL, (void **)&m_pcbMappedLights);
+}
+
+void CScene::UpdateShaderVariables(ID3D12GraphicsCommandList *pd3dCommandList)
+{
+	::memcpy(m_pcbMappedLights->m_pLights, m_pLights, sizeof(LIGHT) * m_nLights);
+	::memcpy(&m_pcbMappedLights->m_xmf4GlobalAmbient, &m_xmf4GlobalAmbient, sizeof(XMFLOAT4));
+	::memcpy(&m_pcbMappedLights->m_nLights, &m_nLights, sizeof(int));
+}
+
+void CScene::ReleaseShaderVariables()
+{
+	if (m_pd3dcbLights)
+	{
+		m_pd3dcbLights->Unmap(0, NULL);
+		m_pd3dcbLights->Release();
+	}
+}
+
 void CScene::ReleaseUploadBuffers()
 {
-
-    for (int i = 0; i < m_nShaders; i++) 
-        m_pShaders[i].ReleaseUploadBuffers();
-    if (m_pTerrain) m_pTerrain->ReleaseUploadBuffers();
+	if (m_pTerrain) m_pTerrain->ReleaseUploadBuffers();
 }
-
 
 void CScene::AnimateObjects(float fTimeElapsed)
 {
-	
-    for (int i = 0; i < m_nShaders; i++)
-    {
-        m_pShaders[i].AnimateObjects(fTimeElapsed);
-    }
+	m_fElapsedTime = fTimeElapsed;
+
+	// 플레이어가 있으면, 플레이어를 따라다니는 조명의 위치와 방향을 갱신합니다.
+	if (m_pPlayer)
+	{
+		m_pLights[1].m_xmf3Position = m_pPlayer->GetPosition();
+		m_pLights[1].m_xmf3Direction = m_pPlayer->GetLookVector();
+	}
 }
 
-void CScene::Render(ID3D12GraphicsCommandList* pd3dCommandList, CCamera* pCamera)
+void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera)
 {
-    pCamera->SetViewportsAndScissorRects(pd3dCommandList);
-    pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
-    pCamera->UpdateShaderVariables(pd3dCommandList);
-	
-    for (int i = 0; i < m_nShaders; i++)
-    {
-        m_pShaders[i].Render(pd3dCommandList, pCamera);
-    }
-    if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
+	pd3dCommandList->SetGraphicsRootSignature(m_pd3dGraphicsRootSignature);
+
+	pCamera->SetViewportsAndScissorRects(pd3dCommandList);
+	pCamera->UpdateShaderVariables(pd3dCommandList);
+
+	UpdateShaderVariables(pd3dCommandList);
+
+	D3D12_GPU_VIRTUAL_ADDRESS d3dcbLightsGpuVirtualAddress = m_pd3dcbLights->GetGPUVirtualAddress();
+	pd3dCommandList->SetGraphicsRootConstantBufferView(2, d3dcbLightsGpuVirtualAddress); // Lights (register b4)
+
+	if (m_pTerrain) m_pTerrain->Render(pd3dCommandList, pCamera);
 }
+
+bool CScene::OnProcessingMouseMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam) { return(false); }
+bool CScene::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPARAM wParam, LPARAM lParam) { return(false); }
