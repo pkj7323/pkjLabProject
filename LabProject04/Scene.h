@@ -42,7 +42,7 @@ struct LIGHTS
 constexpr int MAX_PLAYER_BULLETS = 30;
 constexpr int MAX_ENEMY_BULLETS = 100;
 class CScene
-{
+{	
 public:
 	CScene();
 	~CScene();

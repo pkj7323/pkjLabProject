@@ -1,12 +1,10 @@
-// GameObject.h
-
 #pragma once
 #include "Camera.h"
 
-// CMesh의 전체 내용을 아는 대신, 이런 클래스가 있다는 것만 알려줍니다. (전방 선언)
 class CMesh;
 class CMeshLoadInfo;
 class CShader;
+class CMaterial;
 
 #define DIR_FORWARD					0x01
 #define DIR_BACKWARD				0x02
@@ -14,11 +12,6 @@ class CShader;
 #define DIR_RIGHT					0x08
 #define DIR_UP						0x10
 #define DIR_DOWN					0x20
-
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 재질(Material) 관련 클래스 선언부
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 struct MATERIALLOADINFO
 {
@@ -53,7 +46,7 @@ public:
 
 	XMFLOAT4						m_xmf4Ambient = XMFLOAT4(0.2f, 0.2f, 0.2f, 1.0f);
 	XMFLOAT4						m_xmf4Diffuse = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
-	XMFLOAT4						m_xmf4Specular = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f); //(r,g,b,a=power)
+	XMFLOAT4						m_xmf4Specular = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 	XMFLOAT4						m_xmf4Emissive = XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f);
 };
 
@@ -82,10 +75,6 @@ public:
 	static void PrepareShaders(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature);
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 게임 객체(GameObject) 관련 클래스 선언부
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class CGameObject
 {
 private:
@@ -110,8 +99,8 @@ public:
 	CGameObject 					*m_pChild = NULL;
 	CGameObject 					*m_pSibling = NULL;
 
-	BoundingOrientedBox	m_OOBB; // 월드 좌표계의 바운딩 박스
-	bool m_bActive = true; // 활성화 여부
+	BoundingOrientedBox	m_OOBB;
+	bool m_bActive = true;
 	
 	bool IsActive() const { return m_bActive; }
 	void SetActive(bool bActive) { m_bActive = bActive; }
@@ -163,14 +152,12 @@ public:
 
 	UINT GetMeshType();
 
-	bool CheckCollision(CGameObject *pOther); // 충돌 확인 함수
+	bool CheckCollision(CGameObject *pOther);
 public:
 	static MATERIALSLOADINFO *LoadMaterialsInfoFromFile(std::ifstream& file);
 	static CMeshLoadInfo *LoadMeshInfoFromFile(std::ifstream& file);
-	static CGameObject *LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, std
-	                                               ::ifstream& file);
-	static CGameObject *LoadGeometryFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, const
-	                                         char* pstrFileName);
+	static CGameObject *LoadFrameHierarchyFromFile(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, std::ifstream& file);
+	static CGameObject *LoadGeometryFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, const char* pstrFileName);
 };
 
 class CRotatingObject : public CGameObject

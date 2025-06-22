@@ -1,69 +1,48 @@
-// Mesh.h (최종 수정본)
-
 #pragma once
-// CHeightMapTerrain이 CGameObject를 상속받으므로, GameObject.h를 포함합니다.
-#include "GameObject.h" 
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// 정점 구조체 선언
-/////////////////////////////////////////////////////////////////////////////////////////////////
+#include "GameObject.h"
 
 struct CIlluminatedVertex
 {
 	XMFLOAT3 m_xmf3Position;
 	XMFLOAT3 m_xmf3Normal;
-	XMFLOAT4 m_xmf4Color; // 색상 정보 추가
+	XMFLOAT4 m_xmf4Color;
 };
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// 기본 메쉬 클래스 선언
-/////////////////////////////////////////////////////////////////////////////////////////////////
 
 class CMesh
 {
 public:
 	CMesh(int nMeshes = 1);
 	virtual ~CMesh();
-
 private:
 	int m_nReferences = 0;
 public:
 	void AddRef() { m_nReferences++; }
 	void Release() { if (--m_nReferences <= 0) delete this; }
-
 protected:
 	D3D12_PRIMITIVE_TOPOLOGY m_d3dPrimitiveTopology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	UINT m_nSlot = 0;
 	UINT m_nVertices = 0;
 	UINT m_nOffset = 0;
 	UINT m_nStride = 0;
-
 	ID3D12Resource* m_pd3dVertexBuffer = NULL;
 	ID3D12Resource* m_pd3dVertexUploadBuffer = NULL;
 	D3D12_VERTEX_BUFFER_VIEW m_d3dVertexBufferView;
-
 	ID3D12Resource* m_pd3dIndexBuffer = NULL;
 	ID3D12Resource* m_pd3dIndexUploadBuffer = NULL;
 	D3D12_INDEX_BUFFER_VIEW m_d3dIndexBufferView;
 	UINT m_nIndices = 0;
-
 	UINT m_nType = 0;
-
 public:
-	BoundingOrientedBox m_OOBB; // 메쉬의 로컬 바운딩 박스
+	BoundingOrientedBox m_OOBB;
 	UINT GetType() { return(m_nType); }
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList);
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet);
 };
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// 파일 로딩 관련 클래스 선언
-/////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define VERTEXT_POSITION			0x01
-#define VERTEXT_COLOR				0x02
-#define VERTEXT_NORMAL				0x04
+#define VERTEXT_POSITION 0x01
+#define VERTEXT_COLOR 0x02
+#define VERTEXT_NORMAL 0x04
 
 class CMeshLoadInfo
 {
@@ -102,7 +81,6 @@ public:
 class CMeshIlluminatedFromFile : public CMeshFromFile
 {
 public:
-	// **수정점 1: 생성자가 파일 로딩용 하나만 남습니다.**
 	CMeshIlluminatedFromFile(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, CMeshLoadInfo *pMeshInfo);
 	virtual ~CMeshIlluminatedFromFile();
 protected:
@@ -114,17 +92,13 @@ public:
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList, int nSubSet);
 };
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-// 지형 관련 클래스 선언부
-////////////////////////////////////////////////////////////////////////////////////////////////
-
 class CHeightMapImage
 {
 private:
-	BYTE*						m_pHeightMapPixels;
-	int							m_nWidth;
-	int							m_nLength;
-	XMFLOAT3					m_xmf3Scale;
+	BYTE* m_pHeightMapPixels;
+	int m_nWidth;
+	int m_nLength;
+	XMFLOAT3 m_xmf3Scale;
 public:
 	CHeightMapImage(LPCTSTR pFileName, int nWidth, int nLength, XMFLOAT3 xmf3Scale);
 	~CHeightMapImage();
@@ -141,14 +115,13 @@ public:
 	virtual ~CHeightMapGridMesh();
 };
 
-
 class CHeightMapTerrain : public CGameObject
 {
 private:
-	CHeightMapImage*			m_pHeightMapImage;
-	XMFLOAT3					m_xmf3Scale;
-	int							m_nWidth;
-	int							m_nLength;
+	CHeightMapImage* m_pHeightMapImage;
+	XMFLOAT3 m_xmf3Scale;
+	int m_nWidth;
+	int m_nLength;
 public:
 	CHeightMapTerrain(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, ID3D12RootSignature* pd3dGraphicsRootSignature, LPCTSTR pFileName, int nWidth, int nLength, int nBlockWidth, int nBlockLength, XMFLOAT3 xmf3Scale);
 	virtual ~CHeightMapTerrain();
@@ -165,7 +138,6 @@ public:
 	virtual ~CCubeMeshDiffused();
 };
 
-
 class CScreenAlignedTriangleMesh : public CMesh
 {
 public:
@@ -176,7 +148,6 @@ public:
 class CObjMesh : public CMesh
 {
 public:
-	// z축을 뒤집을지 결정하는 bool bFlipZ 파라미터 추가
 	CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const string& pstrFileName, float fScale = 1.0f, bool bFlipZ = false);
 	virtual ~CObjMesh();
 };

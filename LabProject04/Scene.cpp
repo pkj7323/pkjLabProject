@@ -240,7 +240,7 @@ void CScene::Fire(CGameObject* pFiredBy)
 			{
 				ppBullets[i]->Reset(pFiredBy, pTurret->GetPosition(), pTurret->GetLook(), pTurret->GetUp());
 			}
-			break; // 하나만 발사하고 루프 종료
+			break;
 		}
 	}
 }
