@@ -31,11 +31,34 @@ void CScene::BuildObjects(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *p
 	m_pTerrain = new CHeightMapTerrain(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, _T("../Assets/Image/Terrain/HeightMap.raw"), 257, 257, 17, 17, XMFLOAT3(8.0f, 2.0f, 8.0f));
 	//m_pTestCubeMesh = new CCubeMeshDiffused(pd3dDevice, pd3dCommandList, 20.0f, 20.0f, 20.0f);
 
-	m_nEnemyTanks = 5; // 5대의 적 탱크를 생성
+	m_nEnemyTanks = 10; // 5대의 적 탱크를 생성
 	m_ppEnemyTanks = new CEnemyTank * [m_nEnemyTanks];
 	for (int i = 0; i < m_nEnemyTanks; i++)
 	{
-		m_ppEnemyTanks[i] = new CEnemyTank(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain);
+		// 플레이어 앞쪽에 일렬로 배치합니다.
+		XMFLOAT3 xmf3EnemyPos = XMFLOAT3(1000.0f + (i * 60.0f) - 120.0f, 0.0f, 1200.0f);
+		m_ppEnemyTanks[i] = new CEnemyTank(pd3dDevice, pd3dCommandList, m_pd3dGraphicsRootSignature, m_pTerrain, xmf3EnemyPos);
+	}
+	// 1. 모든 총알이 함께 사용할 메쉬와 재질을 한 번만 만듭니다.
+	m_pBulletMesh = new CObjMesh(pd3dDevice, pd3dCommandList,"../Assets/Box.obj",5.f,false);
+	m_pBulletMaterial = CreateBulletMaterial(); // Bullet.cpp에 만들었던 Helper 함수 사용
+
+	// 2. 플레이어 총알 풀을 생성하고 초기화합니다.
+	for (int i = 0; i < MAX_PLAYER_BULLETS; i++)
+	{
+		m_pPlayerBullets[i] = new CBullet(pd3dDevice, pd3dCommandList);
+		m_pPlayerBullets[i]->SetMesh(m_pBulletMesh);
+		m_pPlayerBullets[i]->SetMaterial(0, m_pBulletMaterial);
+		m_pPlayerBullets[i]->SetActive(false); // 처음에는 모두 비활성화
+	}
+
+	// 3. 적 탱크 총알 풀을 생성하고 초기화합니다.
+	for (int i = 0; i < MAX_ENEMY_BULLETS; i++)
+	{
+		m_pEnemyBullets[i] = new CBullet(pd3dDevice, pd3dCommandList);
+		m_pEnemyBullets[i]->SetMesh(m_pBulletMesh);
+		m_pEnemyBullets[i]->SetMaterial(0, m_pBulletMaterial);
+		m_pEnemyBullets[i]->SetActive(false);
 	}
 	CreateShaderVariables(pd3dDevice, pd3dCommandList);
 }
@@ -103,11 +126,13 @@ void CScene::ReleaseObjects()
 		}
 		delete[] m_ppEnemyTanks;
 	}
+	for (int i = 0; i < MAX_PLAYER_BULLETS; i++) if (m_pPlayerBullets[i]) delete m_pPlayerBullets[i];
+	for (int i = 0; i < MAX_ENEMY_BULLETS; i++) if (m_pEnemyBullets[i]) delete m_pEnemyBullets[i];
+
+
 	//if (m_pTestCubeMesh) m_pTestCubeMesh->Release(); // <-- 이 줄 추가
 	ReleaseShaderVariables();
 }
-
-// Scene.cpp
 
 ID3D12RootSignature *CScene::CreateGraphicsRootSignature(ID3D12Device *pd3dDevice)
 {
@@ -181,6 +206,45 @@ void CScene::ReleaseUploadBuffers()
 	if (m_pTerrain) m_pTerrain->ReleaseUploadBuffers();
 }
 
+void CScene::Fire(CGameObject* pFiredBy)
+{
+	CBullet** ppBullets = NULL;
+	int nMaxPoolSize = 0;
+
+	// 발사 주체가 플레이어인지 적인지 확인하여 사용할 풀을 결정
+	if (dynamic_cast<CTankPlayer*>(pFiredBy))
+	{
+		ppBullets = m_pPlayerBullets;
+		nMaxPoolSize = MAX_PLAYER_BULLETS;
+	}
+	else if (dynamic_cast<CEnemyTank*>(pFiredBy))
+	{
+		ppBullets = m_pEnemyBullets;
+		nMaxPoolSize = MAX_ENEMY_BULLETS;
+	}
+	else
+	{
+		return;
+	}
+
+	// 해당 풀에서 비활성화된 총알을 찾습니다.
+	for (int i = 0; i < nMaxPoolSize; i++)
+	{
+		if (!ppBullets[i]->IsActive())
+		{
+			// 비활성화된 총알을 찾으면, Reset 함수를 호출하여 재사용합니다.
+			CTankPlayer* pTank = dynamic_cast<CTankPlayer*>(pFiredBy);
+			CGameObject* pTurret = (pTank) ? pTank->GetTurret() : ((CEnemyTank*)pFiredBy)->GetTurret();
+
+			if (pTurret)
+			{
+				ppBullets[i]->Reset(pFiredBy, pTurret->GetPosition(), pTurret->GetLook(), pTurret->GetUp());
+			}
+			break; // 하나만 발사하고 루프 종료
+		}
+	}
+}
+
 void CScene::AnimateObjects(float fTimeElapsed)
 {
 	m_fElapsedTime = fTimeElapsed;
@@ -188,12 +252,75 @@ void CScene::AnimateObjects(float fTimeElapsed)
 	// 플레이어가 있으면, 플레이어를 따라다니는 조명의 위치와 방향을 갱신합니다.
 	if (m_pPlayer)
 	{
-		m_pLights[1].m_xmf3Position = m_pPlayer->GetPosition();
-		m_pLights[1].m_xmf3Direction = m_pPlayer->GetLookVector();
+		// m_pLights[1]이 유효한지 확인하는 방어 코드 추가
+		if (m_nLights > 1 && m_pLights)
+		{
+			m_pLights[1].m_xmf3Position = m_pPlayer->GetPosition();
+			m_pLights[1].m_xmf3Direction = m_pPlayer->GetLookVector();
+		}
 	}
+
+	// 모든 적 탱크들의 Animate 함수 호출
 	for (int i = 0; i < m_nEnemyTanks; i++)
 	{
-		m_ppEnemyTanks[i]->Animate(fTimeElapsed);
+		if (m_ppEnemyTanks[i]->IsActive())
+			m_ppEnemyTanks[i]->Animate(fTimeElapsed, this);
+	}
+
+	// 모든 플레이어 총알들의 Animate 함수 호출
+	for (int i = 0; i < MAX_PLAYER_BULLETS; i++)
+	{
+		if (m_pPlayerBullets[i]->IsActive()) m_pPlayerBullets[i]->Animate(fTimeElapsed);
+	}
+
+	// 모든 적 총알들의 Animate 함수 호출
+	for (int i = 0; i < MAX_ENEMY_BULLETS; i++)
+	{
+		if (m_pEnemyBullets[i]->IsActive()) m_pEnemyBullets[i]->Animate(fTimeElapsed);
+	}
+
+	// 1. 플레이어의 총알과 적 탱크의 충돌을 검사합니다.
+	for (int i = 0; i < MAX_PLAYER_BULLETS; i++)
+	{
+		// 총알이 활성화 상태일 때만 검사합니다.
+		if (m_pPlayerBullets[i]->IsActive())
+		{
+			for (int j = 0; j < m_nEnemyTanks; j++)
+			{
+				// 적 탱크가 활성화 상태일 때만 검사합니다.
+				if (m_ppEnemyTanks[j]->IsActive())
+				{
+					// CheckCollision 함수로 두 객체의 바운딩 박스가 겹치는지 확인합니다.
+					if (m_ppEnemyTanks[j]->CheckCollision(m_pPlayerBullets[i]))
+					{
+						// 충돌이 발생하면, 총알과 적 탱크를 모두 비활성화시켜 화면에서 사라지게 합니다.
+						m_pPlayerBullets[i]->SetActive(false);
+						m_ppEnemyTanks[j]->SetActive(false);
+						// OutputDebugStringA("Hit");
+						// 한 총알이 여러 탱크를 동시에 파괴하지 않도록 break로 내부 루프를 빠져나옵니다.
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	// 2. 여기에 "적 총알과 플레이어의 충돌" 로직도 나중에 추가할 수 있습니다.
+	for (int i = 0; i < MAX_ENEMY_BULLETS; i++)
+	{
+		if (m_pEnemyBullets[i]->IsActive())
+		{
+			// 플레이어가 활성화 상태일 때만 검사합니다.
+			if (m_pPlayer && m_pPlayer->IsActive())
+			{
+				if (m_pEnemyBullets[i]->CheckCollision(m_pPlayer))
+				{
+					m_pEnemyBullets[i]->SetActive(false);
+					// 여기에 플레이어 HP 감소 또는 게임 오버 로직을 추가할 수 있습니다.
+					// 예: m_pPlayer->OnDamaged(10);
+				}
+			}
+		}
 	}
 }
 
@@ -214,6 +341,16 @@ void CScene::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera
 	for (int i = 0; i < m_nEnemyTanks; i++)
 	{
 		m_ppEnemyTanks[i]->Render(pd3dCommandList, pCamera);
+	}
+
+	for (int i = 0; i < MAX_PLAYER_BULLETS; i++)
+	{
+		if (m_pPlayerBullets[i]->IsActive()) m_pPlayerBullets[i]->Render(pd3dCommandList, pCamera);
+	}
+	// 적 총알 Render
+	for (int i = 0; i < MAX_ENEMY_BULLETS; i++)
+	{
+		if (m_pEnemyBullets[i]->IsActive()) m_pEnemyBullets[i]->Render(pd3dCommandList, pCamera);
 	}
 	//if (m_pTestCubeMesh)
 	//{

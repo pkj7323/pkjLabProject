@@ -2,6 +2,9 @@
 
 #include "stdafx.h"
 #include "Mesh.h"
+
+#include <algorithm>
+
 #include "GameObject.h" // CHeightMapTerrain이 CGameObject와 CMaterial을 사용하므로 포함
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,7 +489,7 @@ CScreenAlignedTriangleMesh::~CScreenAlignedTriangleMesh() {}
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-CObjMesh::CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const std::string& pstrFileName) : CMesh()
+CObjMesh::CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const string& pstrFileName, float fScale, bool bFlipZ) : CMesh()
 {
 	// 파일에서 읽어온 데이터를 임시로 저장할 벡터들
 	std::vector<XMFLOAT3> positions;
@@ -510,11 +513,16 @@ CObjMesh::CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dComm
 	std::string line;
 	while (std::getline(file, line))
 	{
-		if (line.substr(0, 2) == "v ") // 정점 위치 (v x y z)
+		if (line.substr(0, 2) == "v ")
 		{
 			std::istringstream iss(line.substr(2));
 			XMFLOAT3 pos;
 			iss >> pos.x >> pos.y >> pos.z;
+			// --- 추가된 부분: 스케일 및 Z축 뒤집기 적용 ---
+			pos.x *= fScale;
+			pos.y *= fScale;
+			pos.z *= fScale * (bFlipZ ? -1.0f : 1.0f);
+			// --- 여기까지 ---
 			positions.push_back(pos);
 		}
 		else if (line.substr(0, 3) == "vn ") // 정점 법선 (vn x y z)
@@ -572,6 +580,29 @@ CObjMesh::CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dComm
 	m_d3dIndexBufferView.BufferLocation = m_pd3dIndexBuffer->GetGPUVirtualAddress();
 	m_d3dIndexBufferView.Format = DXGI_FORMAT_R32_UINT;
 	m_d3dIndexBufferView.SizeInBytes = sizeof(UINT) * m_nIndices;
+
+
+	if (!finalVertices.empty())
+	{
+		auto [min_x, max_x] = std::ranges::minmax_element(finalVertices,
+														  [](const CIlluminatedVertex& a, const CIlluminatedVertex& b) {
+															  return a.m_xmf3Position.x < b.m_xmf3Position.x;
+														  });
+		auto [min_y, max_y] = std::ranges::minmax_element(finalVertices,
+														  [](const CIlluminatedVertex& a, const CIlluminatedVertex& b) {
+															  return a.m_xmf3Position.y < b.m_xmf3Position.y;
+														  });
+		auto [min_z, max_z] = std::ranges::minmax_element(finalVertices,
+														  [](const CIlluminatedVertex& a, const CIlluminatedVertex& b) {
+															  return a.m_xmf3Position.z < b.m_xmf3Position.z;
+														  });
+		XMFLOAT3 max = { max_x->m_xmf3Position.x, max_y->m_xmf3Position.y, max_z->m_xmf3Position.z };
+		XMFLOAT3 min = { min_x->m_xmf3Position.x, min_y->m_xmf3Position.y, min_z->m_xmf3Position.z };
+		XMFLOAT3 center = Vector3::Divide(Vector3::Add(max, min), 2.f);
+		m_OOBB.Center = center;
+		m_OOBB.Extents = Vector3::Divide(Vector3::Subtract(max, min), 2.f);
+		m_OOBB.Orientation = XMFLOAT4(0, 0, 0, 1);
+	}
 }
 
 CObjMesh::~CObjMesh()

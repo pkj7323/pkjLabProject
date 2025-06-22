@@ -6,6 +6,7 @@
 #include "Player.h"
 
 // CHeightMapTerrain 클래스가 Mesh.h에 있으므로 포함합니다.
+#include "Bullet.h"
 #include "Enemy.h"
 #include "Mesh.h" 
 
@@ -38,7 +39,8 @@ struct LIGHTS
 	XMFLOAT4				m_xmf4GlobalAmbient;
 	int						m_nLights;
 };
-
+constexpr int MAX_PLAYER_BULLETS = 30;
+constexpr int MAX_ENEMY_BULLETS = 100;
 class CScene
 {
 public:
@@ -69,6 +71,11 @@ public:
 	CHeightMapTerrain *GetTerrain() { return(m_pTerrain); }
 	// Scene.h 의 CScene 클래스 public 영역에 추가
 	D3D12_GPU_VIRTUAL_ADDRESS GetLightsGpuVirtualAddress() { return(m_pd3dcbLights->GetGPUVirtualAddress()); }
+
+	void Fire(CGameObject* pFiredBy);
+
+	CPlayer* GetPlayer() const { return m_pPlayer; }
+	
 protected:
 	ID3D12RootSignature			*m_pd3dGraphicsRootSignature = NULL;
 
@@ -86,6 +93,15 @@ protected:
 
 	int							m_nEnemyTanks = 0;
 	CEnemyTank**				m_ppEnemyTanks = NULL;
+
+
+	CBullet*					m_pPlayerBullets[MAX_PLAYER_BULLETS];
+	CBullet*					m_pEnemyBullets[MAX_ENEMY_BULLETS];
+
+	// 총알들이 공통으로 사용할 메쉬와 재질
+	CMesh*						m_pBulletMesh = NULL;
+	CMaterial*					m_pBulletMaterial = NULL;
+
 
 	//CMesh*						m_pTestCubeMesh = nullptr;
 };

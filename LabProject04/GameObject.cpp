@@ -138,6 +138,8 @@ void CGameObject::SetChild(CGameObject* pChild, bool bReferenceUpdate)
 	}
 }
 
+
+
 void CGameObject::SetMesh(CMesh* pMesh)
 {
 	if (m_pMesh) m_pMesh->Release();
@@ -179,12 +181,18 @@ void CGameObject::SetMaterial(int nMaterial, CMaterial *pMaterial)
 void CGameObject::UpdateTransform(XMFLOAT4X4 *pxmf4x4Parent)
 {
 	m_xmf4x4World = (pxmf4x4Parent) ? Matrix4x4::Multiply(m_xmf4x4Transform, *pxmf4x4Parent) : m_xmf4x4Transform;
+	if (m_pMesh)
+	{
+		m_pMesh->m_OOBB.Transform(m_OOBB/*out*/, XMLoadFloat4x4(&m_xmf4x4World));
+		XMStoreFloat4(&m_OOBB.Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_OOBB.Orientation)));
+	}
 	if (m_pSibling) m_pSibling->UpdateTransform(pxmf4x4Parent);
 	if (m_pChild) m_pChild->UpdateTransform(&m_xmf4x4World);
 }
 
 void CGameObject::Animate(float fTimeElapsed, XMFLOAT4X4 *pxmf4x4Parent)
 {
+	if (!m_bActive) return;
 	UpdateTransform(pxmf4x4Parent);
 
 	if (m_pSibling) m_pSibling->Animate(fTimeElapsed, pxmf4x4Parent);
@@ -195,6 +203,7 @@ void CGameObject::OnPrepareRender() {}
 
 void CGameObject::Render(ID3D12GraphicsCommandList *pd3dCommandList, CCamera *pCamera)
 {
+	if (!m_bActive) return;
 	OnPrepareRender();
 	UpdateShaderVariable(pd3dCommandList, &m_xmf4x4World);
 
@@ -228,6 +237,14 @@ void CGameObject::UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandLis
 }
 
 void CGameObject::UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList, CMaterial *pMaterial) {}
+void CGameObject::UpdateBoundingBox()
+{
+	if (m_pMesh)
+	{
+		m_pMesh->m_OOBB.Transform(m_OOBB/*out*/, XMLoadFloat4x4(&m_xmf4x4World));
+		XMStoreFloat4(&m_OOBB.Orientation, XMQuaternionNormalize(XMLoadFloat4(&m_OOBB.Orientation)));
+	}
+}
 
 void CGameObject::ReleaseUploadBuffers()
 {
@@ -286,6 +303,47 @@ void CGameObject::Rotate(XMFLOAT4* pxmf4Quaternion)
 }
 
 UINT CGameObject::GetMeshType() { return((m_pMesh) ? m_pMesh->GetType() : 0); }
+// GameObject.cpp
+
+bool CGameObject::CheckCollision(CGameObject *pOther)
+{
+	if (!pOther) return false;
+	UpdateBoundingBox();
+	pOther->UpdateBoundingBox();
+	// --- 디버깅 코드 추가 ---
+	// 충돌을 검사하기 직전에, 두 객체의 바운딩 박스 월드 좌표를 출력합니다.
+	if (m_pMesh && pOther->m_pMesh) // 두 객체 모두 메쉬가 있을 때만 의미가 있습니다.
+	{
+		TCHAR pstrDebug[256] = { 0 };
+		_stprintf_s(pstrDebug, 256, _T("충돌 검사: [ %hs (C:%.2f,%.2f,%.2f E:%.2f,%.2f,%.2f) ] vs [ %hs (C:%.2f,%.2f,%.2f E:%.2f,%.2f,%.2f) ]\n"),
+					this->m_pstrFrameName,
+					this->m_OOBB.Center.x, this->m_OOBB.Center.y, this->m_OOBB.Center.z,
+					this->m_OOBB.Extents.x, this->m_OOBB.Extents.y, this->m_OOBB.Extents.z,
+					pOther->m_pstrFrameName,
+					pOther->m_OOBB.Center.x, pOther->m_OOBB.Center.y, pOther->m_OOBB.Center.z,
+					pOther->m_OOBB.Extents.x, pOther->m_OOBB.Extents.y, pOther->m_OOBB.Extents.z
+		);
+		OutputDebugString(pstrDebug);
+	}
+	// --- 여기까지 ---
+
+	// 1. 나 자신의 바운딩 박스와 상대방의 바운딩 박스가 충돌하는지 검사합니다.
+	if (m_pMesh && m_OOBB.Intersects(pOther->m_OOBB)) return true;
+
+	// 2. 나의 자식 객체들이 상대방과 충돌하는지 재귀적으로 검사합니다.
+	if (m_pChild)
+	{
+		if (m_pChild->CheckCollision(pOther)) return true;
+	}
+
+	// 3. 나의 형제 객체들이 상대방과 충돌하는지 재귀적으로 검사합니다.
+	if (m_pSibling)
+	{
+		if (m_pSibling->CheckCollision(pOther)) return true;
+	}
+
+	return false;
+}
 
 CGameObject *CGameObject::FindFrame(const char* pstrFrameName)
 {

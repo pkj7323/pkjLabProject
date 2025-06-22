@@ -110,6 +110,11 @@ public:
 	CGameObject 					*m_pChild = NULL;
 	CGameObject 					*m_pSibling = NULL;
 
+	BoundingOrientedBox	m_OOBB; // 월드 좌표계의 바운딩 박스
+	bool m_bActive = true; // 활성화 여부
+	
+	bool IsActive() const { return m_bActive; }
+	void SetActive(bool bActive) { m_bActive = bActive; }
 	void SetMesh(CMesh *pMesh);
 	void SetShader(CShader *pShader);
 	void SetShader(int nMaterial, CShader *pShader);
@@ -129,6 +134,8 @@ public:
 
 	virtual void UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList, XMFLOAT4X4 *pxmf4x4World);
 	virtual void UpdateShaderVariable(ID3D12GraphicsCommandList *pd3dCommandList, CMaterial *pMaterial);
+
+	virtual void UpdateBoundingBox();
 
 	virtual void ReleaseUploadBuffers();
 
@@ -156,6 +163,7 @@ public:
 
 	UINT GetMeshType();
 
+	bool CheckCollision(CGameObject *pOther); // 충돌 확인 함수
 public:
 	static MATERIALSLOADINFO *LoadMaterialsInfoFromFile(std::ifstream& file);
 	static CMeshLoadInfo *LoadMeshInfoFromFile(std::ifstream& file);

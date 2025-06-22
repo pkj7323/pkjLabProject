@@ -372,6 +372,8 @@ void CGameFramework::ReleaseObjects()
 	if (m_pScene) delete m_pScene;
 }
 
+// GameFramework.cpp
+
 void CGameFramework::ProcessInput()
 {
 	static UCHAR pKeyBuffer[256];
@@ -381,10 +383,8 @@ void CGameFramework::ProcessInput()
 	{
 		if (pKeyBuffer[VK_UP] & 0xF0) dwDirection |= DIR_FORWARD;
 		if (pKeyBuffer[VK_DOWN] & 0xF0) dwDirection |= DIR_BACKWARD;
-		if (pKeyBuffer[VK_LEFT] & 0xF0) dwDirection |= DIR_LEFT;   // 탱크 좌회전
-		if (pKeyBuffer[VK_RIGHT] & 0xF0) dwDirection |= DIR_RIGHT; // 탱크 우회전
-		if (pKeyBuffer[VK_PRIOR] & 0xF0) dwDirection |= DIR_UP;
-		if (pKeyBuffer[VK_NEXT] & 0xF0) dwDirection |= DIR_DOWN;
+		if (pKeyBuffer[VK_LEFT] & 0xF0) dwDirection |= DIR_LEFT;
+		if (pKeyBuffer[VK_RIGHT] & 0xF0) dwDirection |= DIR_RIGHT;
 	}
 
 	float cxDelta = 0.0f, cyDelta = 0.0f;
@@ -394,42 +394,46 @@ void CGameFramework::ProcessInput()
 	{
 		::SetCursor(NULL);
 		::GetCursorPos(&ptCursorPos);
-		cxDelta = (float)(ptCursorPos.x - m_ptOldCursorPos.x) / 3.0f;
-		cyDelta = (float)(ptCursorPos.y - m_ptOldCursorPos.y) / 3.0f;
+		cxDelta = (float)(ptCursorPos.x - m_ptOldCursorPos.x);
+		cyDelta = (float)(ptCursorPos.y - m_ptOldCursorPos.y);
 		::SetCursorPos(m_ptOldCursorPos.x, m_ptOldCursorPos.y);
 	}
 
-	// 이동 또는 회전 입력이 있을 때만 처리
 	if ((dwDirection != 0) || (cxDelta != 0.0f) || (cyDelta != 0.0f))
 	{
-		// 마우스 움직임(cxDelta, cyDelta)은 이제 카메라만 회전시킵니다.
 		if (cxDelta || cyDelta)
 		{
-			if (m_pCamera) m_pCamera->Rotate(cyDelta, cxDelta, 0.0f);
-			if (m_pPlayer) ((CTankPlayer*)m_pPlayer)->RotateTurret(cxDelta);
+			if (m_pCamera) m_pCamera->Rotate(cyDelta, 0.0f, 0.0f);
+			if (m_pPlayer) ((CTankPlayer*)m_pPlayer)->RotateTurret(cxDelta * 0.5f);
 		}
 
-		// 키보드 입력은 플레이어를 움직이거나 회전시킵니다.
 		if (dwDirection)
 		{
-			// 좌/우 키는 탱크 몸체를 회전시킵니다.
-			float fBodyYaw = 0.0f;
-			if (dwDirection & DIR_RIGHT) fBodyYaw = +120.0f * m_GameTimer.GetTimeElapsed();
-			if (dwDirection & DIR_LEFT)  fBodyYaw = -120.0f * m_GameTimer.GetTimeElapsed();
+			float fRotationSpeed = 240.0f;
+			if (dwDirection & DIR_RIGHT) m_pPlayer->Rotate(0.0f, +fRotationSpeed * m_GameTimer.GetTimeElapsed(), 0.0f);
+			if (dwDirection & DIR_LEFT) m_pPlayer->Rotate(0.0f, -fRotationSpeed * m_GameTimer.GetTimeElapsed(), 0.0f);
 
-			if (fBodyYaw != 0.0f)
+			// --- 수정된 부분: 수평 이동 로직 ---
+			if (dwDirection & (DIR_FORWARD | DIR_BACKWARD))
 			{
-				m_pPlayer->Rotate(0.0f, fBodyYaw, 0.0f);
-				//if (m_pCamera)
-				//{
-				//	// 카메라도 몸체와 같은 양만큼만 Yaw 회전
-				//	m_pCamera->Rotate(0.0f, fBodyYaw, 0.0f);
-				//}
-			}
+				// 1. 플레이어의 현재 방향(Look) 벡터를 가져옵니다.
+				XMFLOAT3 xmf3Look = m_pPlayer->GetLookVector();
+				// 2. Y값을 0으로 만들어 수평 방향 벡터로 만듭니다.
+				xmf3Look.y = 0.0f;
+				xmf3Look = Vector3::Normalize(xmf3Look);
 
-			// 앞/뒤 키는 탱크를 해당 방향으로 움직입니다.
-			if (dwDirection & DIR_FORWARD) m_pPlayer->Move(dwDirection, 50.0f * m_GameTimer.GetTimeElapsed(), true);
-			if (dwDirection & DIR_BACKWARD) m_pPlayer->Move(dwDirection, 50.0f * m_GameTimer.GetTimeElapsed(), true);
+				// 3. 이 수평 방향으로만 이동 벡터를 계산합니다.
+				float fMoveSpeed = 10.0f;
+				float fDistance = fMoveSpeed * m_GameTimer.GetTimeElapsed();
+				XMFLOAT3 xmf3Shift = XMFLOAT3(0, 0, 0);
+
+				if (dwDirection & DIR_FORWARD) xmf3Shift = Vector3::Add(xmf3Shift, xmf3Look, fDistance);
+				if (dwDirection & DIR_BACKWARD) xmf3Shift = Vector3::Add(xmf3Shift, xmf3Look, -fDistance);
+
+				// 4. 계산된 수평 이동 벡터를 플레이어의 속도에 더합니다.
+				m_pPlayer->Move(xmf3Shift, true);
+			}
+			// --- 여기까지 ---
 		}
 	}
 
@@ -546,13 +550,9 @@ void CGameFramework::OnProcessingKeyboardMessage(HWND hWnd, UINT nMessageID, WPA
 		case WM_KEYUP:
 			switch (wParam)
 			{
-				/*‘F1’ 키를 누르면 1인칭 카메라, ‘F2’ 키를 누르면 스페이스-쉽 카메라로 변경한다, ‘F3’ 키를 누르면 3인칭 카메라
-			   로 변경한다.*/
-				case VK_F1:
-				case VK_F2:
-				case VK_F3:
-					if (m_pPlayer) m_pCamera = m_pPlayer->ChangeCamera((wParam - VK_F1 + 1),
-																	   m_GameTimer.GetTimeElapsed());
+				case VK_SPACE:
+					// Scene에 플레이어의 발사 요청을 전달합니다.
+					if (m_pScene && m_pPlayer) m_pScene->Fire(m_pPlayer);
 					break;
 			}
 		default:

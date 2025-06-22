@@ -4,6 +4,7 @@
 #include "GameObject.h"
 #include "Camera.h"
 
+class CScene; // CPlayer가 CScene을 사용하므로 미리 선언
 class CTerrainPlayer; // CTankPlayer가 CTerrainPlayer를 사용하므로 미리 선언
 
 class CPlayer : public CGameObject
@@ -68,6 +69,8 @@ public:
 	virtual CCamera* ChangeCamera(DWORD nNewCameraMode, float fTimeElapsed) { return(NULL); }
 
 	void CPlayer::CreateShaderVariables(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList) override;
+
+	virtual void Fire(CScene* pScene) = 0;
 };
 
 // 지형 위를 움직이는 로직을 담당하는 플레이어 클래스
@@ -89,6 +92,9 @@ public:
 	CTankPlayer(ID3D12Device *pd3dDevice, ID3D12GraphicsCommandList *pd3dCommandList, ID3D12RootSignature *pd3dGraphicsRootSignature, void *pContext);
 	virtual ~CTankPlayer();
 	void RotateTurret(float fYaw);
+	CGameObject* GetTurret() const { return m_pTurret; }
+	void Fire(CScene* pScene);
+	
 protected:
 	// 포탑과 포신 객체를 직접 가리키기 위한 포인터입니다.
 	CGameObject* m_pTurret = NULL;

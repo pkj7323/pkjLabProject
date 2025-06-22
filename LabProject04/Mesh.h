@@ -48,7 +48,9 @@ protected:
 	UINT m_nIndices = 0;
 
 	UINT m_nType = 0;
+
 public:
+	BoundingOrientedBox m_OOBB; // 메쉬의 로컬 바운딩 박스
 	UINT GetType() { return(m_nType); }
 	virtual void ReleaseUploadBuffers();
 	virtual void Render(ID3D12GraphicsCommandList *pd3dCommandList);
@@ -174,6 +176,7 @@ public:
 class CObjMesh : public CMesh
 {
 public:
-	CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const std::string& pstrFileName);
+	// z축을 뒤집을지 결정하는 bool bFlipZ 파라미터 추가
+	CObjMesh(ID3D12Device* pd3dDevice, ID3D12GraphicsCommandList* pd3dCommandList, const string& pstrFileName, float fScale = 1.0f, bool bFlipZ = false);
 	virtual ~CObjMesh();
 };
